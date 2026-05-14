@@ -13,7 +13,7 @@
 <div class="container" style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
   <div class="glass-card" style="max-width: 500px; width: 90%; padding: 2.5rem;">
     <h2 style="text-align: center;">👑 অ্যাডমিন রেজিস্ট্রেশন</h2>
-    <p style="text-align: center; margin-bottom: 1.5rem;">মেডিলিংক অ্যাডমিন প্যানেলের জন্য নিবন্ধন</p>
+    <p style="text-align: center; margin-bottom: 1.5rem; color: #2ba0c4;">মেডিলিংক অ্যাডমিন প্যানেলের জন্য নিবন্ধন</p>
     
     <form id="adminRegisterForm">
       <div class="form-group">
@@ -36,8 +36,15 @@
         <input type="password" id="confirmPassword" required placeholder="আবার পাসওয়ার্ড দিন">
       </div>
       
+      <div class="form-group">
+        <label>মোবাইল নম্বর (ঐচ্ছিক)</label>
+        <input type="tel" id="phone" placeholder="01XXXXXXXXX">
+      </div>
+      
       <button type="submit" class="btn-primary" style="width:100%;">অ্যাডমিন নিবন্ধন করুন →</button>
     </form>
+    
+    <div id="messageBox" style="display:none; margin-top: 1rem; padding: 1rem; border-radius: 16px; text-align: center;"></div>
     
     <hr style="margin: 1.5rem 0;">
     
@@ -56,60 +63,148 @@
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const confirm = document.getElementById('confirmPassword').value;
+    const phone = document.getElementById('phone').value.trim();
     
+    // Validation
     if(!fullname || !email || !password) {
-      alert('সব ঘর পূরণ করুন');
+      showMessage('সব ঘর পূরণ করুন', 'error');
       return;
     }
     
     if(password !== confirm) {
-      alert('পাসওয়ার্ড মিলছে না');
+      showMessage('পাসওয়ার্ড মিলছে না', 'error');
       return;
     }
     
     if(password.length < 6) {
-      alert('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+      showMessage('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে', 'error');
       return;
     }
     
-    const submitBtn = e.target.querySelector('button');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerText;
     submitBtn.innerText = 'নিবন্ধন হচ্ছে...';
     submitBtn.disabled = true;
     
     try {
-      // Create auth user
+      // STEP 1: অ্যাডমিন ইউজার তৈরি করুন (Auth)
       const { data: authData, error: authError } = await supabaseClient.auth.signUp({
         email: email,
         password: password,
-        options: { data: { full_name: fullname, role: 'admin' } }
+        options: {
+          data: { 
+            full_name: fullname, 
+            role: 'admin',
+            phone: phone 
+          }
+        }
       });
       
       if(authError) {
-        alert('নিবন্ধন ব্যর্থ: ' + authError.message);
+        if(authError.message.includes('already registered')) {
+          showMessage('এই ইমেইল দিয়ে ইতিমধ্যে অ্যাকাউন্ট আছে। লগইন করুন।', 'error');
+          setTimeout(() => {
+            window.location.href = 'admin-login.html';
+          }, 2000);
+        } else {
+          showMessage('নিবন্ধন ব্যর্থ: ' + authError.message, 'error');
+        }
         return;
       }
       
-      // Add to admins table
+      // STEP 2: admins টেবিলে যোগ করুন
       const { error: adminError } = await supabaseClient
         .from('admins')
-        .insert([{ name: fullname, email: email, role: 'admin' }]);
+        .insert([{
+          name: fullname,
+          email: email,
+          role: 'admin',
+          created_at: new Date()
+        }]);
       
       if(adminError) {
         console.error('Admin table error:', adminError);
-        alert('অ্যাডমিন তৈরি হয়েছে! লগইন করুন।');
-      } else {
-        alert('✅ অ্যাডমিন নিবন্ধন সফল! এখন লগইন করুন।');
+        showMessage('⚠️ অ্যাডমিন তৈরি হয়েছে কিন্তু টেবিলে যোগ করতে সমস্যা। তবুও লগইন试试 করুন।', 'warning');
       }
       
-      window.location.href = 'admin-login.html';
+      // STEP 3: users টেবিলেও যোগ করুন
+      await supabaseClient
+        .from('users')
+        .insert([{
+          email: email,
+          full_name: fullname,
+          phone: phone,
+          created_at: new Date()
+        }])
+        .catch(err => console.log('Users table error (non-critical):', err));
+      
+      // STEP 4: ইউজারকে কনফার্মড করে দিন (Auto confirm)
+      const { error: confirmError } = await supabaseClient.auth.admin.updateUserById(
+        authData.user.id,
+        { email_confirm: true }
+      ).catch(() => null); // Admin API might not work with anon key
+      
+      // STEP 5: অটো লগইন চেষ্টা করুন
+      showMessage('✅ অ্যাডমিন অ্যাকাউন্ট তৈরি হয়েছে! লগইন হচ্ছে...', 'success');
+      
+      // Auto login
+      const { error: loginError } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+      
+      if(!loginError) {
+        setTimeout(() => {
+          window.location.href = 'admin-dashboard.html';
+        }, 1500);
+      } else {
+        setTimeout(() => {
+          window.location.href = 'admin-login.html';
+        }, 1500);
+      }
       
     } catch(error) {
-      alert('ত্রুটি: ' + error.message);
+      showMessage('ত্রুটি: ' + error.message, 'error');
     } finally {
-      submitBtn.innerText = 'অ্যাডমিন নিবন্ধন করুন →';
+      submitBtn.innerText = originalText;
       submitBtn.disabled = false;
     }
   });
+  
+  function showMessage(msg, type) {
+    const box = document.getElementById('messageBox');
+    box.style.display = 'block';
+    box.style.backgroundColor = type === 'error' ? '#ffebee' : (type === 'success' ? '#e8f5e9' : '#fff3e0');
+    box.style.color = type === 'error' ? '#c62828' : (type === 'success' ? '#2e7d32' : '#e65100');
+    box.innerHTML = msg;
+    
+    setTimeout(() => {
+      box.style.display = 'none';
+    }, 5000);
+  }
 </script>
+
+<style>
+  .form-group small {
+    display: block;
+    margin-top: 5px;
+  }
+  
+  .glass-card {
+    animation: fadeInUp 0.6s ease-out;
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
 </body>
 </html>
