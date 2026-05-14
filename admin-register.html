@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>অ্যাডমিন রেজিস্ট্রেশন | মেডিলিংক</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+
+<div class="container" style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+  <div class="glass-card" style="max-width: 500px; width: 90%; padding: 2.5rem;">
+    <h2 style="text-align: center;">👑 অ্যাডমিন রেজিস্ট্রেশন</h2>
+    <p style="text-align: center; margin-bottom: 1.5rem;">মেডিলিংক অ্যাডমিন প্যানেলের জন্য নিবন্ধন</p>
+    
+    <form id="adminRegisterForm">
+      <div class="form-group">
+        <label>পূর্ণ নাম *</label>
+        <input type="text" id="fullname" required placeholder="আপনার নাম লিখুন">
+      </div>
+      
+      <div class="form-group">
+        <label>ইমেইল *</label>
+        <input type="email" id="email" required placeholder="admin@example.com">
+      </div>
+      
+      <div class="form-group">
+        <label>পাসওয়ার্ড * (৬ অক্ষরের বেশি)</label>
+        <input type="password" id="password" required minlength="6" placeholder="পাসওয়ার্ড দিন">
+      </div>
+      
+      <div class="form-group">
+        <label>পাসওয়ার্ড নিশ্চিত করুন *</label>
+        <input type="password" id="confirmPassword" required placeholder="আবার পাসওয়ার্ড দিন">
+      </div>
+      
+      <button type="submit" class="btn-primary" style="width:100%;">অ্যাডমিন নিবন্ধন করুন →</button>
+    </form>
+    
+    <hr style="margin: 1.5rem 0;">
+    
+    <p style="text-align: center;">
+      ইতিমধ্যে অ্যাকাউন্ট আছে? <a href="admin-login.html">অ্যাডমিন লগইন</a><br>
+      <a href="index.html">← হোমপেজে ফিরুন</a>
+    </p>
+  </div>
+</div>
+
+<script>
+  document.getElementById('adminRegisterForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const fullname = document.getElementById('fullname').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('confirmPassword').value;
+    
+    if(!fullname || !email || !password) {
+      alert('সব ঘর পূরণ করুন');
+      return;
+    }
+    
+    if(password !== confirm) {
+      alert('পাসওয়ার্ড মিলছে না');
+      return;
+    }
+    
+    if(password.length < 6) {
+      alert('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+      return;
+    }
+    
+    const submitBtn = e.target.querySelector('button');
+    submitBtn.innerText = 'নিবন্ধন হচ্ছে...';
+    submitBtn.disabled = true;
+    
+    try {
+      // Create auth user
+      const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+        email: email,
+        password: password,
+        options: { data: { full_name: fullname, role: 'admin' } }
+      });
+      
+      if(authError) {
+        alert('নিবন্ধন ব্যর্থ: ' + authError.message);
+        return;
+      }
+      
+      // Add to admins table
+      const { error: adminError } = await supabaseClient
+        .from('admins')
+        .insert([{ name: fullname, email: email, role: 'admin' }]);
+      
+      if(adminError) {
+        console.error('Admin table error:', adminError);
+        alert('অ্যাডমিন তৈরি হয়েছে! লগইন করুন।');
+      } else {
+        alert('✅ অ্যাডমিন নিবন্ধন সফল! এখন লগইন করুন।');
+      }
+      
+      window.location.href = 'admin-login.html';
+      
+    } catch(error) {
+      alert('ত্রুটি: ' + error.message);
+    } finally {
+      submitBtn.innerText = 'অ্যাডমিন নিবন্ধন করুন →';
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

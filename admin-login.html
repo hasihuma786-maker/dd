@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | MediLink</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+
+<div class="container" style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+  <div class="glass-card" style="max-width: 450px; width: 90%; padding: 2.5rem;">
+    <h2 style="text-align: center;">🔐 Admin Portal</h2>
+    <p style="text-align: center; margin-bottom: 1.5rem;">Login to manage your platform</p>
+    
+    <form id="adminLoginForm">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="email" required placeholder="admin@example.com">
+      </div>
+      
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" required placeholder="Enter your password">
+        <small style="cursor: pointer;" onclick="togglePassword()">👁️ Show/Hide</small>
+      </div>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="rememberMe"> Remember Me
+        </label>
+      </div>
+      
+      <button type="submit" class="btn-primary" style="width:100%;">Login as Admin →</button>
+    </form>
+    
+    <p style="text-align: center; margin-top: 1.5rem;">
+      New Admin? <a href="admin-register.html">Register Here</a><br>
+      <a href="index.html">← Back to Homepage</a>
+    </p>
+  </div>
+</div>
+
+<script>
+  function togglePassword() {
+    const pwd = document.getElementById('password');
+    pwd.type = pwd.type === 'password' ? 'text' : 'password';
+  }
+  
+  document.getElementById('adminLoginForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const rememberMe = document.getElementById('rememberMe').checked;
+    
+    if(!email || !password) {
+      alert('Please enter email and password');
+      return;
+    }
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerText;
+    submitBtn.innerText = 'Logging in...';
+    submitBtn.disabled = true;
+    
+    try {
+      // Login to Supabase
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+      
+      if(error) {
+        alert('❌ Login failed: ' + error.message);
+        return;
+      }
+      
+      // Check if user is admin
+      const { data: adminData, error: adminError } = await supabaseClient
+        .from('admins')
+        .select('role, name')
+        .eq('email', email)
+        .single();
+      
+      if(adminError || !adminData) {
+        alert('❌ Access denied. You are not registered as an admin.\n\nPlease register as admin first.');
+        await supabaseClient.auth.signOut();
+        return;
+      }
+      
+      // Remember me functionality
+      if(rememberMe) {
+        localStorage.setItem('adminEmail', email);
+      } else {
+        localStorage.removeItem('adminEmail');
+      }
+      
+      alert(`✅ Welcome ${adminData.name || 'Admin'}!\nRedirecting to dashboard...`);
+      window.location.href = 'admin-dashboard.html';
+      
+    } catch(error) {
+      alert('Login error: ' + error.message);
+    } finally {
+      submitBtn.innerText = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+  
+  // Load saved email if "Remember Me" was checked
+  const savedEmail = localStorage.getItem('adminEmail');
+  if(savedEmail) {
+    document.getElementById('email').value = savedEmail;
+    document.getElementById('rememberMe').checked = true;
+  }
+</script>
+
+</body>
+</html>

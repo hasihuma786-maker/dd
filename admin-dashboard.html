@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | MediLink</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">🏥 MediLink Admin</div>
+    <div class="nav-links">
+      <a href="#" id="logoutBtn">Logout</a>
+      <button id="darkModeToggle" class="btn-outline">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<div class="dashboard-container">
+  <div class="sidebar">
+    <a href="#" class="active" onclick="showAdminSection('pendingDoctors')">⏳ Pending Approvals</a>
+    <a href="#" onclick="showAdminSection('allDoctors')">👨‍⚕️ All Doctors</a>
+    <a href="#" onclick="showAdminSection('appointments')">📅 Appointments</a>
+    <a href="#" onclick="showAdminSection('users')">👥 Users</a>
+    <a href="#" onclick="showAdminSection('stats')">📊 Analytics</a>
+  </div>
+  
+  <div class="main-content">
+    <!-- Stats Overview Cards -->
+    <div id="statsCards" class="stats-grid" style="margin-bottom: 2rem;">
+      <div class="stat-card glass-card"><div class="stat-number" id="totalDoctors">0</div><div>Total Doctors</div></div>
+      <div class="stat-card glass-card"><div class="stat-number" id="pendingDoctors">0</div><div>Pending Approval</div></div>
+      <div class="stat-card glass-card"><div class="stat-number" id="totalAppointments">0</div><div>Appointments</div></div>
+      <div class="stat-card glass-card"><div class="stat-number" id="totalUsers">0</div><div>Registered Users</div></div>
+    </div>
+    
+    <!-- Pending Doctors Section -->
+    <div id="pendingDoctorsSection">
+      <h2>Pending Doctor Approvals</h2>
+      <div id="pendingDoctorsList" class="glass-card" style="padding: 1rem;">Loading...</div>
+    </div>
+    
+    <!-- All Doctors Section -->
+    <div id="allDoctorsSection" style="display: none;">
+      <h2>All Doctors</h2>
+      <input type="text" id="searchDoctors" placeholder="Search doctors..." style="margin-bottom: 1rem; padding: 10px; width: 100%; border-radius: 40px;">
+      <div id="allDoctorsList"></div>
+    </div>
+    
+    <!-- Appointments Section -->
+    <div id="appointmentsSection" style="display: none;">
+      <h2>All Appointments</h2>
+      <div id="appointmentsList"></div>
+    </div>
+    
+    <!-- Users Section -->
+    <div id="usersSection" style="display: none;">
+      <h2>Users</h2>
+      <div id="usersList"></div>
+    </div>
+    
+    <!-- Analytics Section -->
+    <div id="statsSection" style="display: none;">
+      <h2>Analytics</h2>
+      <div class="glass-card" style="padding: 1rem;">
+        <canvas id="appointmentsChart" width="400" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let allDoctorsData = [];
+  let appointmentsData = [];
+  
+  async function loadAdminDashboard() {
+    const isAdminUser = await requireAdmin();
+    if(!isAdminUser) return;
+    
+    await loadStats();
+    await loadPendingDoctors();
+    await loadAllDoctors();
+    await loadAppointments();
+    await loadUsers();
+  }
+  
+  async function loadStats() {
+    const { count: totalDocs } = await supabaseClient.from('doctors').select('*', { count: 'exact', head: true });
+    const { count: pendingDocs } = await supabaseClient.from('doctors').select('*', { count: 'exact', head: true }).eq('approved', false);
+    const { count: totalApps } = await supabaseClient.from('appointments').select('*', { count: 'exact', head: true });
+    const { data: users } = await supabaseClient.auth.admin.listUsers();
+    
+    document.getElementById('totalDoctors').innerText = totalDocs || 0;
+    document.getElementById('pendingDoctors').innerText = pendingDocs || 0;
+    document.getElementById('totalAppointments').innerText = totalApps || 0;
+    document.getElementById('totalUsers').innerText = users?.users?.length || 0;
+  }
+  
+  async function loadPendingDoctors() {
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .eq('approved', false)
+      .order('created_at', { ascending: false });
+      
+    const container = document.getElementById('pendingDoctorsList');
+    if(error || !data || data.length === 0) {
+      container.innerHTML = '<p>No pending approvals ✨</p>';
+      return;
+    }
+    
+    container.innerHTML = data.map(doc => `
+      <div class="glass-card" style="margin-bottom: 1rem; padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+          <div>
+            <h3>${doc.name}</h3>
+            <p>${doc.specialty} • ${doc.city} • ${doc.experience}+ yrs</p>
+            <p>Fee: ₹${doc.fees} • ${doc.available ? 'Available' : 'Unavailable'}</p>
+            <small>Registered: ${new Date(doc.created_at).toLocaleDateString()}</small>
+          </div>
+          <div>
+            <button onclick="approveDoctor('${doc.id}')" class="btn-success">✅ Approve</button>
+            <button onclick="rejectDoctor('${doc.id}')" class="btn-danger">❌ Reject</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  window.approveDoctor = async (id) => {
+    const { error } = await supabaseClient
+      .from('doctors')
+      .update({ approved: true })
+      .eq('id', id);
+      
+    if(error) alert('Error: ' + error.message);
+    else {
+      alert('Doctor approved!');
+      loadPendingDoctors();
+      loadStats();
+      loadAllDoctors();
+    }
+  };
+  
+  window.rejectDoctor = async (id) => {
+    if(confirm('Delete this doctor profile?')) {
+      const { error } = await supabaseClient.from('doctors').delete().eq('id', id);
+      if(error) alert('Error: ' + error.message);
+      else {
+        alert('Doctor rejected and removed');
+        loadPendingDoctors();
+        loadStats();
+      }
+    }
+  };
+  
+  window.deleteDoctor = async (id) => {
+    if(confirm('Permanently delete this doctor?')) {
+      const { error } = await supabaseClient.from('doctors').delete().eq('id', id);
+      if(error) alert('Error: ' + error.message);
+      else {
+        alert('Doctor deleted');
+        loadAllDoctors();
+        loadStats();
+      }
+    }
+  };
+  
+  async function loadAllDoctors() {
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    allDoctorsData = data || [];
+    renderAllDoctors(allDoctorsData);
+  }
+  
+  function renderAllDoctors(doctors) {
+    const container = document.getElementById('allDoctorsList');
+    if(doctors.length === 0) {
+      container.innerHTML = '<p>No doctors found</p>';
+      return;
+    }
+    
+    container.innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Specialty</th><th>City</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${doctors.map(doc => `
+            <tr>
+              <td>${doc.name}</td>
+              <td>${doc.specialty}</td>
+              <td>${doc.city}</td>
+              <td>${doc.approved ? '✅ Approved' : '⏳ Pending'}</td>
+              <td><button onclick="deleteDoctor('${doc.id}')" class="btn-danger">Delete</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  
+  async function loadAppointments() {
+    const { data, error } = await supabaseClient
+      .from('appointments')
+      .select('*, doctors(name)')
+      .order('appointment_date', { ascending: false });
+      
+    appointmentsData = data || [];
+    const container = document.getElementById('appointmentsList');
+    if(appointmentsData.length === 0) {
+      container.innerHTML = '<p>No appointments yet</p>';
+      return;
+    }
+    
+    container.innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+          ${appointmentsData.map(app => `
+            <tr>
+              <td>${app.patient_name || 'N/A'}</td>
+              <td>Dr. ${app.doctors?.name || 'Unknown'}</td>
+              <td>${new Date(app.appointment_date).toLocaleString()}</td>
+              <td><span style="background:${app.status === 'confirmed' ? 'green' : 'orange'}; color:white; padding:2px 8px; border-radius:12px;">${app.status || 'pending'}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  
+  async function loadUsers() {
+    const { data: users } = await supabaseClient.auth.admin.listUsers();
+    const container = document.getElementById('usersList');
+    if(!users?.users?.length) {
+      container.innerHTML = '<p>No users found</p>';
+      return;
+    }
+    
+    container.innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>Email</th><th>Created</th><th>Last Sign In</th></tr></thead>
+        <tbody>
+          ${users.users.map(user => `
+            <tr>
+              <td>${user.email}</td>
+              <td>${new Date(user.created_at).toLocaleDateString()}</td>
+              <td>${user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  
+  // Search doctors
+  document.getElementById('searchDoctors')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const filtered = allDoctorsData.filter(d => 
+      d.name.toLowerCase().includes(term) || 
+      d.specialty.toLowerCase().includes(term) ||
+      d.city.toLowerCase().includes(term)
+    );
+    renderAllDoctors(filtered);
+  });
+  
+  window.showAdminSection = (section) => {
+    document.getElementById('pendingDoctorsSection').style.display = section === 'pendingDoctors' ? 'block' : 'none';
+    document.getElementById('allDoctorsSection').style.display = section === 'allDoctors' ? 'block' : 'none';
+    document.getElementById('appointmentsSection').style.display = section === 'appointments' ? 'block' : 'none';
+    document.getElementById('usersSection').style.display = section === 'users' ? 'block' : 'none';
+    document.getElementById('statsSection').style.display = section === 'stats' ? 'block' : 'none';
+    
+    if(section === 'stats') {
+      renderChart();
+    }
+  };
+  
+  function renderChart() {
+    const ctx = document.getElementById('appointmentsChart')?.getContext('2d');
+    if(!ctx) return;
+    
+    const last7Days = [];
+    for(let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      last7Days.push(d.toLocaleDateString());
+    }
+    
+    const counts = last7Days.map(date => {
+      return appointmentsData.filter(app => new Date(app.created_at).toLocaleDateString() === date).length;
+    });
+    
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: last7Days,
+        datasets: [{ label: 'Appointments', data: counts, borderColor: '#2ba0c4', tension: 0.3 }]
+      }
+    });
+  }
+  
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'admin-login.html';
+  });
+  
+  loadAdminDashboard();
+</script>
+</body>
+</html>

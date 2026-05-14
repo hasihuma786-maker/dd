@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>মেডিলিংক | বিশ্বস্ত ডাক্তার খুঁজুন</title>
+  <meta name="description" content="দেশের সেরা ডাক্তারদের সাথে অনলাইন অ্যাপয়েন্টমেন্ট। বিশেষজ্ঞ ডাক্তার, হাসপাতাল, এবং ক্লিনিকের তথ্য।">
+  <meta name="keywords" content="ডাক্তার, অ্যাপয়েন্টমেন্ট, হাসপাতাল, চিকিৎসা">
+  <meta property="og:title" content="মেডিলিংক - বিশ্বস্ত ডাক্তার খুঁজুন">
+  <meta property="og:description" content="সহজে খুঁজুন আপনার কাছের ডাক্তার">
+  <link rel="canonical" href="https://yourdomain.com/">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">🏥 মেডিলিংক</div>
+    <div class="menu-icon" id="menuIcon">☰</div>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">হোম</a>
+      <a href="doctors.html">ডাক্তার</a>
+      <a href="#specialties">বিশেষত্ব</a>
+      <a href="#cities">শহর</a>
+      <a href="login.html" id="loginNavBtn" class="btn-outline">লগইন</a>
+      <a href="dashboard.html" id="dashboardNavBtn" style="display:none;">ড্যাশবোর্ড</a>
+      <button id="darkModeToggle" class="btn-outline" style="padding:6px 16px">🌙</button>
+      <a href="#" id="logoutBtn" style="display:none;">লগআউট</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <!-- HERO SECTION -->
+  <section style="padding: 4rem 1rem; text-align: center; animation: fadeInUp 0.7s;">
+    <div class="container">
+      <h1>বিশ্বস্ত ডাক্তার খুঁজুন<br>আপনার এলাকায়</h1>
+      <p style="font-size: 1.2rem; margin: 1.5rem 0; opacity: 0.9;">বিশেষজ্ঞ চিকিৎসা, ভেরিফাইড রিভিউ, এবং তাৎক্ষণিক অ্যাপয়েন্টমেন্ট</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
+        <input type="text" id="searchDoctorInput" placeholder="🔍 ডাক্তারের নাম লিখুন" style="padding: 12px 20px; border-radius: 60px; border: 1px solid #ccc; width: 240px;">
+        <input type="text" id="searchCityInput" placeholder="🏙️ শহরের নাম" style="padding: 12px 20px; border-radius: 60px; width: 180px;">
+        <select id="specialtySelect" style="padding: 12px 20px; border-radius: 60px;">
+          <option value="">সব বিশেষত্ব</option>
+          <option>ডেন্টিস্ট</option>
+          <option>কার্ডিওলজিস্ট</option>
+          <option>নিউরোলজিস্ট</option>
+          <option>অর্থোপেডিক</option>
+          <option>গাইনোকোলজিস্ট</option>
+          <option>পেডিয়াট্রিশিয়ান</option>
+        </select>
+        <button class="btn-primary" id="heroSearchBtn">খুঁজুন →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPECIALTY SECTION -->
+  <section id="specialties" class="container" style="margin: 4rem auto;">
+    <h2>চিকিৎসা বিশেষত্ব</h2>
+    <div class="specialty-grid grid-4" id="specialtyGrid"></div>
+  </section>
+
+  <!-- POPULAR CITIES -->
+  <section id="cities" class="container" style="margin: 4rem auto;">
+    <h2>জনপ্রিয় শহর</h2>
+    <div class="grid-4" id="citiesGrid"></div>
+  </section>
+
+  <!-- FEATURED DOCTORS -->
+  <section class="container" style="margin: 4rem auto;">
+    <h2>⭐ সেরা ডাক্তার</h2>
+    <div class="doctor-grid grid-4" id="featuredDoctorsContainer">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="container" style="margin: 4rem auto;">
+    <h2>রোগীর মতামত</h2>
+    <div id="testimonialSlider" class="glass-card" style="padding: 2rem; text-align: center; max-width: 600px; margin: 0 auto;"></div>
+  </section>
+
+  <!-- FAQ ACCORDION -->
+  <section class="container" style="margin: 4rem auto;">
+    <h2>জানতে চান</h2>
+    <div class="glass-card" style="padding: 2rem;">
+      <div class="faq-item" style="margin-bottom: 1.5rem;">
+        <strong style="font-size: 1.1rem; cursor: pointer;" onclick="toggleFaq(this)">📅 কিভাবে অ্যাপয়েন্টমেন্ট করব?</strong>
+        <p style="display: none; margin-top: 0.5rem;">ডাক্তার খুঁজুন, "অ্যাপয়েন্টমেন্ট বুক করুন" ক্লিক করুন, সময় নির্বাচন করুন এবং কনফার্ম করুন।</p>
+      </div>
+      <div class="faq-item" style="margin-bottom: 1.5rem;">
+        <strong style="font-size: 1.1rem; cursor: pointer;" onclick="toggleFaq(this)">✅ ডাক্তাররা কি ভেরিফাইড?</strong>
+        <p style="display: none; margin-top: 0.5rem;">হ্যাঁ! আমাদের সকল ডাক্তার কঠোর ভেরিফিকেশন প্রক্রিয়ার মধ্য দিয়ে আসেন।</p>
+      </div>
+      <div class="faq-item" style="margin-bottom: 1.5rem;">
+        <strong style="font-size: 1.1rem; cursor: pointer;" onclick="toggleFaq(this)">💳 পেমেন্টের উপায় কী কী?</strong>
+        <p style="display: none; margin-top: 0.5rem;">ইউপিআই, ক্রেডিট/ডেবিট কার্ড, নেট ব্যাংকিং, এবং নগদে পেমেন্ট করা যায়।</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2rem;">
+      <div>
+        <h4 style="margin-bottom: 1rem;">মেডিলিংক</h4>
+        <p>স্বাস্থ্যসেবা সবার জন্য</p>
+        <p>📞 জরুরি: 108</p>
+      </div>
+      <div>
+        <h4>লিংক</h4>
+        <p><a href="#" style="color:white;">আমাদের সম্পর্কে</a></p>
+        <p><a href="#" style="color:white;">প্রাইভেসি পলিসি</a></p>
+        <p><a href="#" style="color:white;">যোগাযোগ</a></p>
+      </div>
+      <div>
+        <h4>সোশ্যাল মিডিয়া</h4>
+        <div style="display: flex; gap: 1rem; font-size: 1.5rem;">
+          <span>📘</span> <span>🐦</span> <span>📸</span>
+        </div>
+      </div>
+    </div>
+    <hr style="margin: 2rem 0; border-color: rgba(255,255,255,0.2);">
+    <p style="text-align: center;">© 2026 মেডিলিংক — আপনার সেবায়</p>
+  </div>
+</footer>
+
+<!-- Floating WhatsApp -->
+<div class="whatsapp-float" onclick="window.open('https://wa.me/8801234567890', '_blank')">
+  💬
+</div>
+
+<script>
+  // Mobile menu
+  const menuIcon = document.getElementById('menuIcon');
+  const navLinks = document.getElementById('navLinks');
+  if(menuIcon) menuIcon.addEventListener('click', () => navLinks.classList.toggle('active'));
+  
+  // Dark mode
+  const darkToggle = document.getElementById('darkModeToggle');
+  darkToggle?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  
+  // FAQ Toggle
+  window.toggleFaq = (element) => {
+    const answer = element.nextElementSibling;
+    answer.style.display = answer.style.display === 'none' ? 'block' : 'none';
+  };
+  
+  // Render Specialties (Bengali)
+  const specialties = [
+    { name: 'ডেন্টিস্ট', icon: '🦷', en: 'Dentist' },
+    { name: 'কার্ডিওলজিস্ট', icon: '❤️', en: 'Cardiologist' },
+    { name: 'নিউরোলজিস্ট', icon: '🧠', en: 'Neurologist' },
+    { name: 'অর্থোপেডিক', icon: '🦴', en: 'Orthopedic' },
+    { name: 'গাইনোকোলজিস্ট', icon: '👩‍⚕️', en: 'Gynecologist' },
+    { name: 'পেডিয়াট্রিশিয়ান', icon: '👶', en: 'Pediatrician' }
+  ];
+  const specialtyGrid = document.getElementById('specialtyGrid');
+  if(specialtyGrid) {
+    specialtyGrid.innerHTML = specialties.map(s => `
+      <div class="specialty-card glass-card" style="padding: 2rem; text-align: center; cursor: pointer;" onclick="searchBySpecialty('${s.en}')">
+        <div style="font-size: 3rem;">${s.icon}</div>
+        <h3 style="margin-top: 1rem;">${s.name}</h3>
+      </div>
+    `).join('');
+  }
+  
+  // Render Cities
+  const cities = ['কolkata', 'দিল্লি', 'মুম্বাই', 'বেঙ্গালুরু', 'চেন্নাই', 'হায়দ্রাবাদ'];
+  const citiesGrid = document.getElementById('citiesGrid');
+  if(citiesGrid) {
+    citiesGrid.innerHTML = cities.map(city => `
+      <div class="glass-card" style="padding: 1.5rem; text-align: center; cursor: pointer;" onclick="searchByCity('${city}')">
+        <div style="font-size: 2rem;">🏙️</div>
+        <h3>${city}</h3>
+        <p>২০০+ ডাক্তার</p>
+      </div>
+    `).join('');
+  }
+  
+  window.searchBySpecialty = (specialty) => {
+    window.location.href = `doctors.html?specialty=${encodeURIComponent(specialty)}`;
+  };
+  
+  window.searchByCity = (city) => {
+    window.location.href = `doctors.html?city=${encodeURIComponent(city)}`;
+  };
+  
+  // Load Featured Doctors from Supabase (with INTEGER id)
+  async function loadFeaturedDoctors() {
+    const container = document.getElementById('featuredDoctorsContainer');
+    if(!container) return;
+    container.innerHTML = Array(4).fill().map(() => '<div class="skeleton-card"></div>').join('');
+    
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .eq('approved', true)
+      .limit(4);
+      
+    if(error || !data || data.length === 0) {
+      container.innerHTML = '<p class="glass-card" style="padding:2rem; text-align:center;">কোন ডাক্তার পাওয়া যায়নি 🏥</p>';
+      return;
+    }
+    
+    container.innerHTML = data.map(doc => `
+      <div class="doctor-card glass-card" style="padding: 1.5rem;">
+        <img src="${doc.image || 'https://via.placeholder.com/300x200?text=Doctor'}" alt="${doc.name}" loading="lazy" style="width:100%; height:180px; object-fit:cover; border-radius:20px;">
+        <h3 style="margin-top: 1rem;">${doc.name}</h3>
+        <p style="color: #2ba0c4;">${doc.specialty} • ${doc.experience}+ বছর</p>
+        <p>⭐ ${doc.rating || 4.5} • ₹${doc.fees}</p>
+        <p>🏥 ${doc.hospital || 'প্রাইভেট প্র্যাকটিস'}</p>
+        <a href="doctor-details.html?id=${doc.id}" class="btn-primary" style="display: inline-block; margin-top: 12px; text-decoration: none;">প্রোফাইল দেখুন →</a>
+      </div>
+    `).join('');
+  }
+  
+  // Testimonials
+  const testimonials = [
+    { name: "প্রিয়া শর্মা", text: "আমার ছেলের জন্য একজন চমৎকার শিশু বিশেষজ্ঞ পেয়েছি। ধন্যবাদ মেডিলিংক!", img: "👩", city: "মুম্বাই" },
+    { name: "রাহুল বর্মা", text: "ভেরিফাইড ডাক্তার, স্বচ্ছ ফি। আমি অত্যন্ত সন্তুষ্ট!", img: "👨", city: "দিল্লি" }
+  ];
+  let testimonialIndex = 0;
+  function updateTestimonial() {
+    const t = testimonials[testimonialIndex];
+    const slider = document.getElementById('testimonialSlider');
+    if(slider) {
+      slider.innerHTML = `
+        <div style="font-size: 3rem;">${t.img}</div>
+        <p style="font-size: 1.1rem; margin: 1rem 0;">"${t.text}"</p>
+        <strong>${t.name}</strong>
+        <p style="opacity: 0.7;">⭐ 5.0 • ${t.city}</p>
+        <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem;">
+          <button onclick="prevTestimonial()" class="btn-outline">← আগে</button>
+          <button onclick="nextTestimonial()" class="btn-outline">পরে →</button>
+        </div>
+      `;
+    }
+  }
+  window.prevTestimonial = () => {
+    testimonialIndex = (testimonialIndex - 1 + testimonials.length) % testimonials.length;
+    updateTestimonial();
+  };
+  window.nextTestimonial = () => {
+    testimonialIndex = (testimonialIndex + 1) % testimonials.length;
+    updateTestimonial();
+  };
+  updateTestimonial();
+  
+  // Hero Search
+  document.getElementById('heroSearchBtn')?.addEventListener('click', () => {
+    const name = document.getElementById('searchDoctorInput').value;
+    const city = document.getElementById('searchCityInput').value;
+    const specialty = document.getElementById('specialtySelect').value;
+    let url = 'doctors.html?';
+    if(name) url += `name=${encodeURIComponent(name)}&`;
+    if(city) url += `city=${encodeURIComponent(city)}&`;
+    if(specialty) url += `specialty=${encodeURIComponent(specialty)}`;
+    window.location.href = url;
+  });
+  
+  // Auth Check for Navbar
+  async function checkAuth() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const loginBtn = document.getElementById('loginNavBtn');
+    const dashboardBtn = document.getElementById('dashboardNavBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    if(user) {
+      if(loginBtn) loginBtn.style.display = 'none';
+      if(dashboardBtn) dashboardBtn.style.display = 'inline-block';
+      if(logoutBtn) logoutBtn.style.display = 'inline-block';
+    } else {
+      if(loginBtn) loginBtn.style.display = 'inline-block';
+      if(dashboardBtn) dashboardBtn.style.display = 'none';
+      if(logoutBtn) logoutBtn.style.display = 'none';
+    }
+  }
+  checkAuth();
+  
+  // Logout
+  document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await supabaseClient.auth.signOut();
+    window.location.reload();
+  });
+  
+  loadFeaturedDoctors();
+</script>
+</body>
+</html>

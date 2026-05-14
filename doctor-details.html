@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ডাক্তারের তথ্য | মেডিলিংক</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">🏥 মেডিলিংক</div>
+    <div class="menu-icon" id="menuIcon">☰</div>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">হোম</a>
+      <a href="doctors.html">ডাক্তার</a>
+      <a href="login.html" id="loginNavBtn" class="btn-outline">লগইন</a>
+      <a href="dashboard.html" id="dashboardNavBtn" style="display:none;">ড্যাশবোর্ড</a>
+      <button id="darkModeToggle" class="btn-outline">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container" style="padding: 2rem 1rem;" id="doctorProfileContainer">
+  <div class="skeleton-card" style="height: 400px;"></div>
+</main>
+
+<!-- Appointment Modal -->
+<div id="appointmentModal" class="modal">
+  <div class="modal-content">
+    <h2>📅 অ্যাপয়েন্টমেন্ট বুক করুন</h2>
+    <form id="appointmentForm">
+      <div class="form-group">
+        <label>রোগীর নাম *</label>
+        <input type="text" id="patientName" required>
+      </div>
+      <div class="form-group">
+        <label>মোবাইল নম্বর *</label>
+        <input type="tel" id="patientPhone" required>
+      </div>
+      <div class="form-group">
+        <label>পছন্দের তারিখ *</label>
+        <input type="date" id="appointmentDate" required>
+      </div>
+      <div class="form-group">
+        <label>পছন্দের সময় *</label>
+        <select id="appointmentTime">
+          <option>সকাল ১০:০০</option><option>সকাল ১১:০০</option><option>দুপুর ১২:০০</option>
+          <option>বিকাল ০২:০০</option><option>বিকাল ০৩:০০</option><option>বিকাল ০৪:০০</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>লক্ষণ (ঐচ্ছিক)</label>
+        <textarea id="symptoms" rows="3"></textarea>
+      </div>
+      <button type="submit" class="btn-primary">✅ কনফার্ম করুন</button>
+      <button type="button" onclick="closeModal()" class="btn-outline">বাতিল</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  let currentDoctor = null;
+  
+  async function loadDoctorDetails() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const doctorId = urlParams.get('id');
+    if(!doctorId) {
+      document.getElementById('doctorProfileContainer').innerHTML = '<div class="glass-card" style="padding:2rem;">ডাক্তারের আইডি পাওয়া যায়নি</div>';
+      return;
+    }
+    
+    // Convert to integer for SERIAL id
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .eq('id', parseInt(doctorId))
+      .single();
+      
+    if(error || !data) {
+      document.getElementById('doctorProfileContainer').innerHTML = '<div class="glass-card" style="padding:2rem;">ডাক্তার পাওয়া যায়নি</div>';
+      return;
+    }
+    
+    currentDoctor = data;
+    renderDoctorProfile(data);
+    loadReviews(doctorId);
+  }
+  
+  function renderDoctorProfile(doc) {
+    const container = document.getElementById('doctorProfileContainer');
+    container.innerHTML = `
+      <div class="glass-card" style="padding: 2rem;">
+        <div style="display: flex; flex-wrap: wrap; gap: 2rem;">
+          <img src="${doc.image || 'https://via.placeholder.com/300x300?text=Doctor'}" alt="${doc.name}" style="width: 250px; height: 250px; object-fit: cover; border-radius: 30px;">
+          <div style="flex: 1;">
+            <h1>${doc.name}</h1>
+            <p style="font-size: 1.2rem; color: #2ba0c4;">${doc.specialty}</p>
+            <p>⭐ ${doc.rating || 4.5} (১২০+ রিভিউ)</p>
+            <p>📅 ${doc.experience || 0}+ বছর অভিজ্ঞতা</p>
+            <p>🏥 ${doc.hospital || 'প্রাইভেট প্র্যাকটিস'}</p>
+            <p>📍 ${doc.city || 'বিভিন্ন লোকেশনে'}</p>
+            <p>💰 <strong>₹${doc.fees}</strong> প্রতি সেশন</p>
+            <p>${doc.available ? '✅ অ্যাপয়েন্টমেন্টের জন্য উপলব্ধ' : '⏰ বর্তমানে অনুপলব্ধ'}</p>
+            <button onclick="openBookingModal()" class="btn-primary" style="margin-top: 1rem;">📅 অ্যাপয়েন্টমেন্ট করুন →</button>
+          </div>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+          <h3>ডাক্তার সম্পর্কে</h3>
+          <p>${doc.about || 'বিশেষজ্ঞ ডাক্তার, দীর্ঘদিনের অভিজ্ঞতা সম্পন্ন। রোগীদের সেবা দেওয়াই মূল লক্ষ্য।'}</p>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+          <h3>যোগ্যতা</h3>
+          <ul><li>এমবিবিএস - শীর্ষ মেডিকেল কলেজ</li><li>এমডি - ${doc.specialty}</li><li>ফেলোশিপ - উন্নত চিকিৎসায়</li></ul>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+          <h3>সেবার সময়</h3>
+          <p>সোম-শনি: সকাল ১০টা - সন্ধ্যা ৬টা | রবিবার: বন্ধ</p>
+        </div>
+        
+        <div style="margin-top: 2rem;" id="reviewsSection">
+          <h3>রোগীর রিভিউ</h3>
+          <div id="reviewsList">রিভিউ লোড হচ্ছে...</div>
+          <div style="margin-top: 1rem;">
+            <textarea id="reviewText" placeholder="আপনার রিভিউ লিখুন..." rows="3" style="width:100%; border-radius:16px; padding:12px;"></textarea>
+            <select id="reviewRating" style="margin-top:8px; padding:8px;">
+              <option>৫ - চমৎকার</option><option>৪ - ভালো</option><option>৩ - মোটামুটি</option>
+              <option>২ - খারাপ</option><option>১ - খুব খারাপ</option>
+            </select>
+            <button onclick="submitReview()" class="btn-primary" style="margin-top:8px;">রিভিউ দিন</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  async function loadReviews(doctorId) {
+    const { data, error } = await supabaseClient
+      .from('reviews')
+      .select('*')
+      .eq('doctor_id', parseInt(doctorId))
+      .order('created_at', { ascending: false });
+      
+    const reviewsDiv = document.getElementById('reviewsList');
+    if(error || !data || data.length === 0) {
+      reviewsDiv.innerHTML = '<p>কোন রিভিউ নেই। প্রথম রিভিউ দিন!</p>';
+      return;
+    }
+    
+    reviewsDiv.innerHTML = data.map(review => `
+      <div class="glass-card" style="padding: 1rem; margin-bottom: 1rem;">
+        <strong>${review.user_name}</strong> ⭐ ${review.rating}
+        <p>${review.comment}</p>
+        <small>${new Date(review.created_at).toLocaleDateString('bn-BD')}</small>
+      </div>
+    `).join('');
+  }
+  
+  window.submitReview = async () => {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if(!user) {
+      alert('রিভিউ দিতে লগইন করুন');
+      window.location.href = 'login.html';
+      return;
+    }
+    
+    const reviewText = document.getElementById('reviewText').value;
+    const ratingSelect = document.getElementById('reviewRating').value;
+    const rating = parseInt(ratingSelect.charAt(0));
+    
+    if(!reviewText) {
+      alert('দয়া করে রিভিউ লিখুন');
+      return;
+    }
+    
+    const { error } = await supabaseClient.from('reviews').insert({
+      doctor_id: currentDoctor.id,
+      user_id: user.id,
+      user_name: user.email.split('@')[0],
+      rating: rating,
+      comment: reviewText,
+      created_at: new Date()
+    });
+    
+    if(error) {
+      alert('রিভিউ দিতে সমস্যা হয়েছে: ' + error.message);
+    } else {
+      alert('রিভিউ দেওয়ার জন্য ধন্যবাদ!');
+      document.getElementById('reviewText').value = '';
+      loadReviews(currentDoctor.id);
+    }
+  };
+  
+  window.openBookingModal = async () => {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if(!user) {
+      alert('অ্যাপয়েন্টমেন্ট বুক করতে লগইন করুন');
+      window.location.href = 'login.html';
+      return;
+    }
+    document.getElementById('appointmentModal').classList.add('active');
+  };
+  
+  window.closeModal = () => {
+    document.getElementById('appointmentModal').classList.remove('active');
+  };
+  
+  document.getElementById('appointmentForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if(!user) {
+      alert('প্লিজ লগইন করুন');
+      return;
+    }
+    
+    const appointment = {
+      doctor_id: currentDoctor.id,
+      user_id: user.id,
+      patient_name: document.getElementById('patientName').value,
+      patient_phone: document.getElementById('patientPhone').value,
+      appointment_date: document.getElementById('appointmentDate').value + ' ' + document.getElementById('appointmentTime').value,
+      symptoms: document.getElementById('symptoms').value,
+      status: 'pending',
+      created_at: new Date()
+    };
+    
+    const { error } = await supabaseClient.from('appointments').insert(appointment);
+    if(error) {
+      alert('বুকিং ব্যর্থ: ' + error.message);
+    } else {
+      alert('অ্যাপয়েন্টমেন্ট বুক হয়েছে! শীঘ্রই নিশ্চিত করা হবে।');
+      closeModal();
+      document.getElementById('appointmentForm').reset();
+    }
+  });
+  
+  // Auth check for navbar
+  async function checkAuth() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const loginBtn = document.getElementById('loginNavBtn');
+    const dashboardBtn = document.getElementById('dashboardNavBtn');
+    if(user) {
+      if(loginBtn) loginBtn.style.display = 'none';
+      if(dashboardBtn) dashboardBtn.style.display = 'inline-block';
+    } else {
+      if(loginBtn) loginBtn.style.display = 'inline-block';
+      if(dashboardBtn) dashboardBtn.style.display = 'none';
+    }
+  }
+  
+  // Mobile menu & dark mode
+  document.getElementById('menuIcon')?.addEventListener('click', () => document.getElementById('navLinks').classList.toggle('active'));
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  
+  checkAuth();
+  loadDoctorDetails();
+</script>
+</body>
+</html>

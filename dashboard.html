@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Dashboard | MediLink</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">🏥 MediLink</div>
+    <div class="menu-icon" id="menuIcon">☰</div>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="doctors.html">Doctors</a>
+      <a href="#" id="logoutBtn">Logout</a>
+      <button id="darkModeToggle" class="btn-outline">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<div class="dashboard-container">
+  <div class="sidebar">
+    <a href="#" class="active" onclick="showSection('appointments')">📋 My Appointments</a>
+    <a href="#" onclick="showSection('profile')">👤 My Profile</a>
+    <a href="add-doctor.html" id="addDoctorLink" style="display: none;">➕ Add Doctor Profile</a>
+  </div>
+  
+  <div class="main-content">
+    <!-- Appointments Section -->
+    <div id="appointmentsSection">
+      <h2>My Appointments</h2>
+      <div id="appointmentsList" class="glass-card" style="padding: 1.5rem;">Loading...</div>
+    </div>
+    
+    <!-- Profile Section -->
+    <div id="profileSection" style="display: none;">
+      <h2>My Profile</h2>
+      <div class="glass-card" style="padding: 2rem;">
+        <p><strong>Name:</strong> <span id="userName"></span></p>
+        <p><strong>Email:</strong> <span id="userEmail"></span></p>
+        <p><strong>Member since:</strong> <span id="userSince"></span></p>
+        <button onclick="logout()" class="btn-danger">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentUser = null;
+  
+  async function checkAuthAndLoad() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if(!user) {
+      window.location.href = 'login.html';
+      return;
+    }
+    currentUser = user;
+    document.getElementById('userName').innerText = user.user_metadata?.full_name || user.email;
+    document.getElementById('userEmail').innerText = user.email;
+    document.getElementById('userSince').innerText = new Date(user.created_at).toLocaleDateString();
+    
+    loadAppointments();
+    
+    // Check if user is a doctor (has a profile)
+    const { data: doctorProfile } = await supabaseClient
+      .from('doctors')
+      .select('id')
+      .eq('email', user.email)
+      .single();
+      
+    if(doctorProfile) {
+      document.getElementById('addDoctorLink').style.display = 'block';
+    }
+  }
+  
+  async function loadAppointments() {
+    const { data, error } = await supabaseClient
+      .from('appointments')
+      .select('*, doctors(name, specialty)')
+      .eq('user_id', currentUser.id)
+      .order('appointment_date', { ascending: true });
+      
+    const container = document.getElementById('appointmentsList');
+    if(error || !data || data.length === 0) {
+      container.innerHTML = '<p>No appointments booked yet.</p><a href="doctors.html" class="btn-primary">Find a Doctor →</a>';
+      return;
+    }
+    
+    container.innerHTML = data.map(app => `
+      <div class="glass-card" style="margin-bottom: 1rem; padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+          <div>
+            <h3>Dr. ${app.doctors?.name || 'Doctor'}</h3>
+            <p>${app.doctors?.specialty || 'General'}</p>
+            <p>📅 ${new Date(app.appointment_date).toLocaleString()}</p>
+          </div>
+          <div>
+            <span class="badge" style="background: ${app.status === 'confirmed' ? 'green' : 'orange'}; color:white; padding:4px 12px; border-radius:20px;">
+              ${app.status || 'pending'}
+            </span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  window.showSection = (section) => {
+    document.getElementById('appointmentsSection').style.display = section === 'appointments' ? 'block' : 'none';
+    document.getElementById('profileSection').style.display = section === 'profile' ? 'block' : 'none';
+  };
+  
+  window.logout = async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'index.html';
+  };
+  
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  document.getElementById('menuIcon')?.addEventListener('click', () => document.getElementById('navLinks').classList.toggle('active'));
+  document.getElementById('logoutBtn')?.addEventListener('click', logout);
+  
+  checkAuthAndLoad();
+</script>
+</body>
+</html>
