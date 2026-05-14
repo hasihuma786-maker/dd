@@ -4,7 +4,14 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
-  SUPABASE_ANON_KEY
+  SUPABASE_ANON_KEY,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  }
 );
 
 // Helper function to check if user is admin
@@ -16,7 +23,7 @@ async function isAdmin() {
     .from('admins')
     .select('role')
     .eq('email', user.email)
-    .single();
+    .maybeSingle();  // .single() এর পরিবর্তে .maybeSingle() ব্যবহার করুন
   
   if(error || !data) return false;
   return data.role === 'admin';
@@ -37,10 +44,4 @@ async function requireAdmin() {
     return false;
   }
   return true;
-}
-
-// Helper to get current user
-async function getCurrentUser() {
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  return user;
 }
