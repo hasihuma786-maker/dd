@@ -23,7 +23,7 @@ async function isAdmin() {
     .from('admins')
     .select('role')
     .eq('email', user.email)
-    .maybeSingle();  // .single() এর পরিবর্তে .maybeSingle() ব্যবহার করুন
+    .maybeSingle();
   
   if(error || !data) return false;
   return data.role === 'admin';
@@ -44,4 +44,9 @@ async function requireAdmin() {
     return false;
   }
   return true;
+}
+
+async function getCurrentUser() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  return user;
 }
