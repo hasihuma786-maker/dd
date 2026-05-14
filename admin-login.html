@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Login | MediLink</title>
+  <title>অ্যাডমিন লগইন | মেডিলিংক</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script src="supabase.js"></script>
@@ -12,33 +12,29 @@
 
 <div class="container" style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
   <div class="glass-card" style="max-width: 450px; width: 90%; padding: 2.5rem;">
-    <h2 style="text-align: center;">🔐 Admin Portal</h2>
-    <p style="text-align: center; margin-bottom: 1.5rem;">Login to manage your platform</p>
+    <h2 style="text-align: center;">🔐 অ্যাডমিন লগইন</h2>
+    <p style="text-align: center; margin-bottom: 1.5rem;">আপনার অ্যাডমিন অ্যাকাউন্টে লগইন করুন</p>
     
     <form id="adminLoginForm">
       <div class="form-group">
-        <label>Email Address</label>
+        <label>ইমেইল</label>
         <input type="email" id="email" required placeholder="admin@example.com">
       </div>
       
       <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="password" required placeholder="Enter your password">
-        <small style="cursor: pointer;" onclick="togglePassword()">👁️ Show/Hide</small>
+        <label>পাসওয়ার্ড</label>
+        <input type="password" id="password" required placeholder="পাসওয়ার্ড দিন">
+        <small style="cursor: pointer;" onclick="togglePassword()">👁️ দেখাও/লুকাও</small>
       </div>
       
-      <div class="form-group">
-        <label>
-          <input type="checkbox" id="rememberMe"> Remember Me
-        </label>
-      </div>
-      
-      <button type="submit" class="btn-primary" style="width:100%;">Login as Admin →</button>
+      <button type="submit" class="btn-primary" style="width:100%;">লগইন →</button>
     </form>
     
+    <div id="errorBox" style="display:none; margin-top: 1rem; padding: 0.75rem; background: #ffebee; color: #c62828; border-radius: 12px; text-align: center;"></div>
+    
     <p style="text-align: center; margin-top: 1.5rem;">
-      New Admin? <a href="admin-register.html">Register Here</a><br>
-      <a href="index.html">← Back to Homepage</a>
+      নতুন অ্যাডমিন? <a href="admin-register.html">নিবন্ধন করুন</a><br>
+      <a href="index.html">← হোমপেজে ফিরুন</a>
     </p>
   </div>
 </div>
@@ -54,31 +50,34 @@
     
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const rememberMe = document.getElementById('rememberMe').checked;
+    const errorBox = document.getElementById('errorBox');
     
     if(!email || !password) {
-      alert('Please enter email and password');
+      errorBox.style.display = 'block';
+      errorBox.innerText = 'ইমেইল এবং পাসওয়ার্ড দিন';
       return;
     }
     
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerText;
-    submitBtn.innerText = 'Logging in...';
+    submitBtn.innerText = 'লগইন হচ্ছে...';
     submitBtn.disabled = true;
+    errorBox.style.display = 'none';
     
     try {
-      // Login to Supabase
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ 
-        email, 
-        password 
+      // লগইন চেষ্টা
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
       });
       
       if(error) {
-        alert('❌ Login failed: ' + error.message);
+        errorBox.style.display = 'block';
+        errorBox.innerText = '❌ লগইন ব্যর্থ: ' + error.message;
         return;
       }
       
-      // Check if user is admin
+      // চেক করুন এই ইউজার অ্যাডমিন কিনা
       const { data: adminData, error: adminError } = await supabaseClient
         .from('admins')
         .select('role, name')
@@ -86,36 +85,31 @@
         .single();
       
       if(adminError || !adminData) {
-        alert('❌ Access denied. You are not registered as an admin.\n\nPlease register as admin first.');
+        errorBox.style.display = 'block';
+        errorBox.innerText = '❌ আপনি অ্যাডমিন নন। অনুগ্রহ করে অ্যাডমিন রেজিস্ট্রেশন করুন।';
         await supabaseClient.auth.signOut();
         return;
       }
       
-      // Remember me functionality
-      if(rememberMe) {
-        localStorage.setItem('adminEmail', email);
-      } else {
-        localStorage.removeItem('adminEmail');
-      }
+      // সবকিছু ঠিক আছে - ড্যাশবোর্ডে নিয়ে যান
+      errorBox.style.display = 'none';
+      errorBox.style.backgroundColor = '#e8f5e9';
+      errorBox.style.color = '#2e7d32';
+      errorBox.innerText = '✅ লগইন সফল! ড্যাশবোর্ডে নিয়ে যাচ্ছি...';
+      errorBox.style.display = 'block';
       
-      alert(`✅ Welcome ${adminData.name || 'Admin'}!\nRedirecting to dashboard...`);
-      window.location.href = 'admin-dashboard.html';
+      setTimeout(() => {
+        window.location.href = 'admin-dashboard.html';
+      }, 1000);
       
     } catch(error) {
-      alert('Login error: ' + error.message);
+      errorBox.style.display = 'block';
+      errorBox.innerText = 'ত্রুটি: ' + error.message;
     } finally {
       submitBtn.innerText = originalText;
       submitBtn.disabled = false;
     }
   });
-  
-  // Load saved email if "Remember Me" was checked
-  const savedEmail = localStorage.getItem('adminEmail');
-  if(savedEmail) {
-    document.getElementById('email').value = savedEmail;
-    document.getElementById('rememberMe').checked = true;
-  }
 </script>
-
 </body>
 </html>
