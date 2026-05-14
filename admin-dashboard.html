@@ -1,104 +1,103 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard | MediLink</title>
+  <title>অ্যাডমিন ড্যাশবোর্ড | মেডিলিংক</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script src="supabase.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <nav class="navbar">
   <div class="nav-container">
-    <div class="logo">🏥 MediLink Admin</div>
+    <div class="logo">👑 মেডিলিংক অ্যাডমিন</div>
     <div class="nav-links">
-      <a href="#" id="logoutBtn">Logout</a>
+      <a href="index.html">হোম</a>
+      <button id="logoutBtn" class="btn-outline">লগআউট</button>
       <button id="darkModeToggle" class="btn-outline">🌙</button>
     </div>
   </div>
 </nav>
 
-<div class="dashboard-container">
-  <div class="sidebar">
-    <a href="#" class="active" onclick="showAdminSection('pendingDoctors')">⏳ Pending Approvals</a>
-    <a href="#" onclick="showAdminSection('allDoctors')">👨‍⚕️ All Doctors</a>
-    <a href="#" onclick="showAdminSection('appointments')">📅 Appointments</a>
-    <a href="#" onclick="showAdminSection('users')">👥 Users</a>
-    <a href="#" onclick="showAdminSection('stats')">📊 Analytics</a>
+<div class="container" style="padding: 2rem 1rem;">
+  <h1>👋 অ্যাডমিন ড্যাশবোর্ড</h1>
+  <p id="adminName" style="margin-bottom: 2rem;">স্বাগতম!</p>
+  
+  <!-- Stats Cards -->
+  <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="stat-card glass-card" style="padding: 1.5rem; text-align: center;">
+      <div class="stat-number" id="totalDoctors" style="font-size: 2rem; font-weight: bold;">0</div>
+      <div>মোট ডাক্তার</div>
+    </div>
+    <div class="stat-card glass-card" style="padding: 1.5rem; text-align: center;">
+      <div class="stat-number" id="pendingDoctors" style="font-size: 2rem; font-weight: bold;">0</div>
+      <div>অনুমোদনের অপেক্ষায়</div>
+    </div>
+    <div class="stat-card glass-card" style="padding: 1.5rem; text-align: center;">
+      <div class="stat-number" id="totalAppointments" style="font-size: 2rem; font-weight: bold;">0</div>
+      <div>মোট অ্যাপয়েন্টমেন্ট</div>
+    </div>
   </div>
   
-  <div class="main-content">
-    <!-- Stats Overview Cards -->
-    <div id="statsCards" class="stats-grid" style="margin-bottom: 2rem;">
-      <div class="stat-card glass-card"><div class="stat-number" id="totalDoctors">0</div><div>Total Doctors</div></div>
-      <div class="stat-card glass-card"><div class="stat-number" id="pendingDoctors">0</div><div>Pending Approval</div></div>
-      <div class="stat-card glass-card"><div class="stat-number" id="totalAppointments">0</div><div>Appointments</div></div>
-      <div class="stat-card glass-card"><div class="stat-number" id="totalUsers">0</div><div>Registered Users</div></div>
-    </div>
-    
-    <!-- Pending Doctors Section -->
-    <div id="pendingDoctorsSection">
-      <h2>Pending Doctor Approvals</h2>
-      <div id="pendingDoctorsList" class="glass-card" style="padding: 1rem;">Loading...</div>
-    </div>
-    
-    <!-- All Doctors Section -->
-    <div id="allDoctorsSection" style="display: none;">
-      <h2>All Doctors</h2>
-      <input type="text" id="searchDoctors" placeholder="Search doctors..." style="margin-bottom: 1rem; padding: 10px; width: 100%; border-radius: 40px;">
-      <div id="allDoctorsList"></div>
-    </div>
-    
-    <!-- Appointments Section -->
-    <div id="appointmentsSection" style="display: none;">
-      <h2>All Appointments</h2>
-      <div id="appointmentsList"></div>
-    </div>
-    
-    <!-- Users Section -->
-    <div id="usersSection" style="display: none;">
-      <h2>Users</h2>
-      <div id="usersList"></div>
-    </div>
-    
-    <!-- Analytics Section -->
-    <div id="statsSection" style="display: none;">
-      <h2>Analytics</h2>
-      <div class="glass-card" style="padding: 1rem;">
-        <canvas id="appointmentsChart" width="400" height="200"></canvas>
-      </div>
-    </div>
+  <!-- Pending Doctors -->
+  <div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem;">
+    <h2>⏳ অনুমোদনের অপেক্ষায় ডাক্তার</h2>
+    <div id="pendingDoctorsList">লোড হচ্ছে...</div>
+  </div>
+  
+  <!-- All Doctors -->
+  <div class="glass-card" style="padding: 1.5rem;">
+    <h2>👨‍⚕️ সকল ডাক্তার</h2>
+    <input type="text" id="searchDoctors" placeholder="ডাক্তার খুঁজুন..." style="width: 100%; padding: 10px; margin-bottom: 1rem; border-radius: 40px;">
+    <div id="allDoctorsList">লোড হচ্ছে...</div>
   </div>
 </div>
 
 <script>
-  let allDoctorsData = [];
-  let appointmentsData = [];
+  let currentAdmin = null;
   
-  async function loadAdminDashboard() {
-    const isAdminUser = await requireAdmin();
-    if(!isAdminUser) return;
+  // চেক করুন ইউজার অ্যাডমিন কিনা এবং লগইন করা আছে কিনা
+  async function checkAdminAndLoad() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
     
-    await loadStats();
-    await loadPendingDoctors();
-    await loadAllDoctors();
-    await loadAppointments();
-    await loadUsers();
+    if(!user) {
+      window.location.href = 'admin-login.html';
+      return;
+    }
+    
+    // চেক করুন admins টেবিলে আছে কিনা
+    const { data: adminData, error } = await supabaseClient
+      .from('admins')
+      .select('name, role')
+      .eq('email', user.email)
+      .single();
+    
+    if(error || !adminData) {
+      alert('আপনি অ্যাডমিন নন!');
+      await supabaseClient.auth.signOut();
+      window.location.href = 'admin-login.html';
+      return;
+    }
+    
+    currentAdmin = adminData;
+    document.getElementById('adminName').innerText = `স্বাগতম, ${adminData.name || user.email}!`;
+    
+    // সব ডাটা লোড করুন
+    loadStats();
+    loadPendingDoctors();
+    loadAllDoctors();
   }
   
   async function loadStats() {
     const { count: totalDocs } = await supabaseClient.from('doctors').select('*', { count: 'exact', head: true });
     const { count: pendingDocs } = await supabaseClient.from('doctors').select('*', { count: 'exact', head: true }).eq('approved', false);
     const { count: totalApps } = await supabaseClient.from('appointments').select('*', { count: 'exact', head: true });
-    const { data: users } = await supabaseClient.auth.admin.listUsers();
     
     document.getElementById('totalDoctors').innerText = totalDocs || 0;
     document.getElementById('pendingDoctors').innerText = pendingDocs || 0;
     document.getElementById('totalAppointments').innerText = totalApps || 0;
-    document.getElementById('totalUsers').innerText = users?.users?.length || 0;
   }
   
   async function loadPendingDoctors() {
@@ -107,10 +106,10 @@
       .select('*')
       .eq('approved', false)
       .order('created_at', { ascending: false });
-      
+    
     const container = document.getElementById('pendingDoctorsList');
     if(error || !data || data.length === 0) {
-      container.innerHTML = '<p>No pending approvals ✨</p>';
+      container.innerHTML = '<p>✅ কোনো pending ডাক্তার নেই</p>';
       return;
     }
     
@@ -119,13 +118,12 @@
         <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
           <div>
             <h3>${doc.name}</h3>
-            <p>${doc.specialty} • ${doc.city} • ${doc.experience}+ yrs</p>
-            <p>Fee: ₹${doc.fees} • ${doc.available ? 'Available' : 'Unavailable'}</p>
-            <small>Registered: ${new Date(doc.created_at).toLocaleDateString()}</small>
+            <p>${doc.specialty} • ${doc.city} • ${doc.experience}+ বছর</p>
+            <p>ফি: ₹${doc.fees}</p>
           </div>
           <div>
-            <button onclick="approveDoctor('${doc.id}')" class="btn-success">✅ Approve</button>
-            <button onclick="rejectDoctor('${doc.id}')" class="btn-danger">❌ Reject</button>
+            <button onclick="approveDoctor(${doc.id})" class="btn-success" style="background: green; color: white; padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer;">✅ অনুমোদন</button>
+            <button onclick="rejectDoctor(${doc.id})" class="btn-danger" style="background: red; color: white; padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer;">❌ বাতিল</button>
           </div>
         </div>
       </div>
@@ -137,36 +135,25 @@
       .from('doctors')
       .update({ approved: true })
       .eq('id', id);
-      
-    if(error) alert('Error: ' + error.message);
+    
+    if(error) alert('এরর: ' + error.message);
     else {
-      alert('Doctor approved!');
-      loadPendingDoctors();
+      alert('✅ ডাক্তার অনুমোদিত হয়েছে!');
       loadStats();
+      loadPendingDoctors();
       loadAllDoctors();
     }
   };
   
   window.rejectDoctor = async (id) => {
-    if(confirm('Delete this doctor profile?')) {
+    if(confirm('এই ডাক্তার ডিলিট করতে চান?')) {
       const { error } = await supabaseClient.from('doctors').delete().eq('id', id);
-      if(error) alert('Error: ' + error.message);
+      if(error) alert('এরর: ' + error.message);
       else {
-        alert('Doctor rejected and removed');
+        alert('ডাক্তার ডিলিট করা হয়েছে');
+        loadStats();
         loadPendingDoctors();
-        loadStats();
-      }
-    }
-  };
-  
-  window.deleteDoctor = async (id) => {
-    if(confirm('Permanently delete this doctor?')) {
-      const { error } = await supabaseClient.from('doctors').delete().eq('id', id);
-      if(error) alert('Error: ' + error.message);
-      else {
-        alert('Doctor deleted');
         loadAllDoctors();
-        loadStats();
       }
     }
   };
@@ -176,29 +163,34 @@
       .from('doctors')
       .select('*')
       .order('created_at', { ascending: false });
-      
-    allDoctorsData = data || [];
-    renderAllDoctors(allDoctorsData);
-  }
-  
-  function renderAllDoctors(doctors) {
+    
     const container = document.getElementById('allDoctorsList');
-    if(doctors.length === 0) {
-      container.innerHTML = '<p>No doctors found</p>';
+    if(error || !data || data.length === 0) {
+      container.innerHTML = '<p>কোন ডাক্তার নেই</p>';
       return;
     }
     
     container.innerHTML = `
-      <table class="data-table">
-        <thead><tr><th>Name</th><th>Specialty</th><th>City</th><th>Status</th><th>Actions</th></tr></thead>
+      <table style="width:100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background: #f5f5f5;">
+            <th style="padding: 12px; text-align: left;">নাম</th>
+            <th style="padding: 12px; text-align: left;">বিশেষত্ব</th>
+            <th style="padding: 12px; text-align: left;">শহর</th>
+            <th style="padding: 12px; text-align: left;">স্ট্যাটাস</th>
+            <th style="padding: 12px; text-align: left;">অ্যাকশন</th>
+          </tr>
+        </thead>
         <tbody>
-          ${doctors.map(doc => `
-            <tr>
-              <td>${doc.name}</td>
-              <td>${doc.specialty}</td>
-              <td>${doc.city}</td>
-              <td>${doc.approved ? '✅ Approved' : '⏳ Pending'}</td>
-              <td><button onclick="deleteDoctor('${doc.id}')" class="btn-danger">Delete</button></td>
+          ${data.map(doc => `
+            <tr style="border-bottom: 1px solid #ddd;">
+              <td style="padding: 12px;">${doc.name}</td>
+              <td style="padding: 12px;">${doc.specialty}</td>
+              <td style="padding: 12px;">${doc.city}</td>
+              <td style="padding: 12px;">${doc.approved ? '✅ অনুমোদিত' : '⏳ পেন্ডিং'}</td>
+              <td style="padding: 12px;">
+                <button onclick="deleteDoctor(${doc.id})" style="background: #c62828; color: white; padding: 4px 12px; border: none; border-radius: 12px; cursor: pointer;">ডিলিট</button>
+              </td>
             </tr>
           `).join('')}
         </tbody>
@@ -206,114 +198,49 @@
     `;
   }
   
-  async function loadAppointments() {
-    const { data, error } = await supabaseClient
-      .from('appointments')
-      .select('*, doctors(name)')
-      .order('appointment_date', { ascending: false });
-      
-    appointmentsData = data || [];
-    const container = document.getElementById('appointmentsList');
-    if(appointmentsData.length === 0) {
-      container.innerHTML = '<p>No appointments yet</p>';
-      return;
-    }
-    
-    container.innerHTML = `
-      <table class="data-table">
-        <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Status</th></tr></thead>
-        <tbody>
-          ${appointmentsData.map(app => `
-            <tr>
-              <td>${app.patient_name || 'N/A'}</td>
-              <td>Dr. ${app.doctors?.name || 'Unknown'}</td>
-              <td>${new Date(app.appointment_date).toLocaleString()}</td>
-              <td><span style="background:${app.status === 'confirmed' ? 'green' : 'orange'}; color:white; padding:2px 8px; border-radius:12px;">${app.status || 'pending'}</span></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-  }
-  
-  async function loadUsers() {
-    const { data: users } = await supabaseClient.auth.admin.listUsers();
-    const container = document.getElementById('usersList');
-    if(!users?.users?.length) {
-      container.innerHTML = '<p>No users found</p>';
-      return;
-    }
-    
-    container.innerHTML = `
-      <table class="data-table">
-        <thead><tr><th>Email</th><th>Created</th><th>Last Sign In</th></tr></thead>
-        <tbody>
-          ${users.users.map(user => `
-            <tr>
-              <td>${user.email}</td>
-              <td>${new Date(user.created_at).toLocaleDateString()}</td>
-              <td>${user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-  }
-  
-  // Search doctors
-  document.getElementById('searchDoctors')?.addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase();
-    const filtered = allDoctorsData.filter(d => 
-      d.name.toLowerCase().includes(term) || 
-      d.specialty.toLowerCase().includes(term) ||
-      d.city.toLowerCase().includes(term)
-    );
-    renderAllDoctors(filtered);
-  });
-  
-  window.showAdminSection = (section) => {
-    document.getElementById('pendingDoctorsSection').style.display = section === 'pendingDoctors' ? 'block' : 'none';
-    document.getElementById('allDoctorsSection').style.display = section === 'allDoctors' ? 'block' : 'none';
-    document.getElementById('appointmentsSection').style.display = section === 'appointments' ? 'block' : 'none';
-    document.getElementById('usersSection').style.display = section === 'users' ? 'block' : 'none';
-    document.getElementById('statsSection').style.display = section === 'stats' ? 'block' : 'none';
-    
-    if(section === 'stats') {
-      renderChart();
+  window.deleteDoctor = async (id) => {
+    if(confirm('স্থায়ীভাবে ডিলিট করতে চান?')) {
+      const { error } = await supabaseClient.from('doctors').delete().eq('id', id);
+      if(error) alert('এরর: ' + error.message);
+      else {
+        alert('ডাক্তার ডিলিট হয়েছে');
+        loadStats();
+        loadAllDoctors();
+      }
     }
   };
   
-  function renderChart() {
-    const ctx = document.getElementById('appointmentsChart')?.getContext('2d');
-    if(!ctx) return;
+  // Search doctors
+  document.getElementById('searchDoctors')?.addEventListener('input', async (e) => {
+    const term = e.target.value.toLowerCase();
+    const { data } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .ilike('name', `%${term}%`);
     
-    const last7Days = [];
-    for(let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      last7Days.push(d.toLocaleDateString());
+    const container = document.getElementById('allDoctorsList');
+    if(!data || data.length === 0) {
+      container.innerHTML = '<p>কোন ডাক্তার খুঁজে পাওয়া যায়নি</p>';
+      return;
     }
     
-    const counts = last7Days.map(date => {
-      return appointmentsData.filter(app => new Date(app.created_at).toLocaleDateString() === date).length;
-    });
-    
-    new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: last7Days,
-        datasets: [{ label: 'Appointments', data: counts, borderColor: '#2ba0c4', tension: 0.3 }]
-      }
-    });
-  }
+    container.innerHTML = data.map(doc => `
+      <div style="border-bottom: 1px solid #ddd; padding: 12px; display: flex; justify-content: space-between;">
+        <div><strong>${doc.name}</strong><br>${doc.specialty} • ${doc.city}</div>
+        <div><button onclick="deleteDoctor(${doc.id})" style="background: red; color: white; padding: 4px 12px; border: none; border-radius: 12px;">ডিলিট</button></div>
+      </div>
+    `).join('');
+  });
   
-  document.getElementById('darkModeToggle')?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  // Logout
   document.getElementById('logoutBtn')?.addEventListener('click', async () => {
     await supabaseClient.auth.signOut();
     window.location.href = 'admin-login.html';
   });
   
-  loadAdminDashboard();
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  
+  checkAdminAndLoad();
 </script>
 </body>
 </html>
