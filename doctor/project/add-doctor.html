@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Doctor Profile | MediLink</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+  <style>
+    .image-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .image-preview img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 2px solid #2ba0c4;
+    }
+    .upload-progress {
+      display: none;
+      margin-top: 5px;
+      font-size: 12px;
+      color: #2ba0c4;
+    }
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 10px;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">🏥 MediLink</div>
+    <div class="menu-icon" id="menuIcon">☰</div>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="doctors.html">Doctors</a>
+      <a href="dashboard.html">Dashboard</a>
+      <button id="darkModeToggle" class="btn-outline">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container" style="padding:2rem 1rem; max-width:800px;">
+  <div class="glass-card" style="padding:2rem;">
+    <h2>➕ Add Your Doctor Profile</h2>
+    <p style="color: #e65100; background: #fff3e0; padding: 10px; border-radius: 12px; margin: 1rem 0;">
+      ⚠️ <strong>Note:</strong> Your profile will be reviewed by admin before appearing publicly.
+    </p>
+    
+    <div id="errorBox" class="error-message"></div>
+    
+    <form id="doctorForm">
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="name" required placeholder="e.g., Dr. John Doe">
+      </div>
+      
+      <div class="form-group">
+        <label>Specialty *</label>
+        <select id="specialty" required>
+          <option value="">Select Specialty</option>
+          <option>Cardiologist</option><option>Dentist</option><option>Neurologist</option>
+          <option>Orthopedic</option><option>Gynecologist</option><option>Pediatrician</option>
+          <option>Dermatologist</option><option>Ophthalmologist</option><option>Psychiatrist</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>City *</label>
+        <input type="text" id="city" required placeholder="e.g., Kolkata, Delhi, Mumbai">
+      </div>
+      
+      <div class="form-group">
+        <label>Phone Number *</label>
+        <input type="tel" id="phone" required placeholder="e.g., 9876543210">
+      </div>
+      
+      <div class="form-group">
+        <label>Hospital / Clinic Name</label>
+        <input type="text" id="hospital" placeholder="e.g., Apollo Hospital">
+      </div>
+      
+      <div class="form-group">
+        <label>Clinic Address</label>
+        <textarea id="clinicAddress" rows="2" placeholder="Full address of your clinic"></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label>Years of Experience</label>
+        <input type="number" id="experience" value="0">
+      </div>
+      
+      <div class="form-group">
+        <label>Consultation Fee (₹)</label>
+        <input type="number" id="fees" value="500">
+      </div>
+      
+      <div class="form-group">
+        <label>About Doctor</label>
+        <textarea id="about" rows="4" placeholder="Write about your qualifications, experience, and services..."></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label>Profile Image URL (optional)</label>
+        <input type="text" id="image" placeholder="https://... or leave empty for default">
+        <small style="color: #666;">You can also use image URL from any hosting service</small>
+      </div>
+      
+      <div class="form-group">
+        <label>Clinic Images URLs (optional, one per line)</label>
+        <textarea id="clinicImagesUrls" rows="2" placeholder="https://image1.jpg&#10;https://image2.jpg"></textarea>
+        <small style="color: #666;">Paste image URLs, one per line</small>
+      </div>
+      
+      <div class="form-group">
+        <label><input type="checkbox" id="available" checked> Available for appointments</label>
+      </div>
+      
+      <button type="submit" class="btn-primary" style="width:100%;">Submit for Approval →</button>
+    </form>
+    
+    <div id="messageBox" style="display:none; margin-top:1rem; padding:1rem; border-radius:12px; text-align:center;"></div>
+    
+    <p style="text-align:center; margin-top:1rem;">
+      <a href="dashboard.html">← Back to Dashboard</a>
+    </p>
+  </div>
+</div>
+
+<script>
+  // Slug generator function
+  function generateSlug(name) {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')           // Remove special characters
+      .replace(/\s+/g, '-')               // Replace spaces with hyphens
+      .replace(/--+/g, '-')               // Replace multiple hyphens
+      .replace(/^-+|-+$/g, '')            // Trim hyphens
+      .substring(0, 100);                 // Limit length
+  }
+  
+  async function checkAuth() { 
+    const { data: { user } } = await supabaseClient.auth.getUser(); 
+    if(!user) {
+      window.location.href = 'login.html'; 
+      return null;
+    }
+    return user; 
+  }
+  
+  // Show error message
+  function showError(message) {
+    const errorBox = document.getElementById('errorBox');
+    errorBox.innerText = message;
+    errorBox.style.display = 'block';
+    setTimeout(() => {
+      errorBox.style.display = 'none';
+    }, 5000);
+  }
+  
+  // Show success message
+  function showMessage(message, isSuccess = true) {
+    const messageBox = document.getElementById('messageBox');
+    messageBox.style.display = 'block';
+    messageBox.style.background = isSuccess ? '#e8f5e9' : '#ffebee';
+    messageBox.style.color = isSuccess ? '#2e7d32' : '#c62828';
+    messageBox.innerHTML = message;
+    setTimeout(() => {
+      messageBox.style.display = 'none';
+    }, 4000);
+  }
+  
+  document.getElementById('doctorForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const user = await checkAuth();
+    if (!user) return;
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerText;
+    
+    // Get form values
+    const name = document.getElementById('name').value.trim();
+    const specialty = document.getElementById('specialty').value;
+    const city = document.getElementById('city').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const hospital = document.getElementById('hospital').value.trim();
+    const clinicAddress = document.getElementById('clinicAddress').value.trim();
+    const experience = parseInt(document.getElementById('experience').value) || 0;
+    const fees = parseInt(document.getElementById('fees').value) || 0;
+    const about = document.getElementById('about').value.trim();
+    const imageUrl = document.getElementById('image').value.trim();
+    const clinicImagesText = document.getElementById('clinicImagesUrls').value.trim();
+    const available = document.getElementById('available').checked;
+    
+    // Validation
+    if (!name) {
+      showError('❌ Please enter doctor name');
+      return;
+    }
+    if (!specialty) {
+      showError('❌ Please select specialty');
+      return;
+    }
+    if (!city) {
+      showError('❌ Please enter city');
+      return;
+    }
+    if (!phone) {
+      showError('❌ Please enter phone number');
+      return;
+    }
+    
+    // Generate slug from name
+    let slug = generateSlug(name);
+    
+    // Check if slug already exists and make it unique
+    try {
+      const { data: existing } = await supabaseClient
+        .from('doctors')
+        .select('slug')
+        .eq('slug', slug);
+      
+      if (existing && existing.length > 0) {
+        slug = `${slug}-${Date.now()}`;
+      }
+      
+      console.log('Generated slug:', slug);
+      
+    } catch(err) {
+      console.error('Error checking slug:', err);
+      // Continue with original slug
+    }
+    
+    // Parse clinic images URLs
+    let clinicImages = [];
+    if (clinicImagesText) {
+      clinicImages = clinicImagesText.split('\n').filter(url => url.trim());
+    }
+    
+    // Prepare doctor data
+    const doctorData = {
+      name: name,
+      slug: slug,                    // IMPORTANT: slug must not be null
+      specialty: specialty,
+      city: city,
+      phone: phone,
+      hospital: hospital || null,
+      clinic_address: clinicAddress || null,
+      clinic_images: clinicImages,
+      experience: experience,
+      fees: fees,
+      about: about || `Experienced ${specialty} dedicated to providing quality healthcare.`,
+      image: imageUrl || 'https://randomuser.me/api/portraits/med.jpg',
+      available: available,
+      approved: false,               // Pending approval
+      email: user.email,
+      rating: 4.0,
+      created_at: new Date()
+    };
+    
+    console.log('Submitting doctor data:', doctorData);
+    
+    // Show loading
+    submitBtn.innerText = 'Submitting...';
+    submitBtn.disabled = true;
+    
+    try {
+      const { data, error } = await supabaseClient
+        .from('doctors')
+        .insert(doctorData)
+        .select();
+      
+      if (error) {
+        console.error('Insert error:', error);
+        
+        if (error.message.includes('null value in column "slug"')) {
+          showError('❌ Slug generation failed. Please try again with a different name.');
+        } else if (error.message.includes('duplicate key')) {
+          showError('❌ A doctor with similar name already exists. Please use a different name.');
+        } else {
+          showError('❌ Error: ' + error.message);
+        }
+        return;
+      }
+      
+      console.log('Insert success:', data);
+      
+      showMessage('✅ Doctor profile submitted successfully! Admin will review and approve within 24-48 hours.', true);
+      
+      // Reset form
+      document.getElementById('doctorForm').reset();
+      
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        window.location.href = 'dashboard.html';
+      }, 3000);
+      
+    } catch(err) {
+      console.error('Submission error:', err);
+      showError('❌ Submission failed: ' + err.message);
+    } finally {
+      submitBtn.innerText = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+  
+  // Dark mode toggle
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => {
+    document.body.classList.toggle('dark');
+  });
+  
+  // Mobile menu
+  document.getElementById('menuIcon')?.addEventListener('click', () => {
+    document.getElementById('navLinks').classList.toggle('active');
+  });
+  
+  checkAuth();
+</script>
+</body>
+</html>

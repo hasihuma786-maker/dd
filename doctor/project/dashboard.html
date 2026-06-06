@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Dashboard | MediLink</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+  <style>
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .add-doctor-btn {
+      background: linear-gradient(95deg, #0b4f6c, #2ba0c4);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: 0.2s;
+    }
+    .add-doctor-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 6px 14px rgba(0,110,130,0.3);
+    }
+    .pending-badge {
+      background: #ff9800;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .approved-badge {
+      background: #4caf50;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .doctor-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .quick-actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .quick-action-btn {
+      background: #f5f5f5;
+      padding: 10px 20px;
+      border-radius: 40px;
+      text-decoration: none;
+      color: #1a2c3e;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: 0.2s;
+    }
+    body.dark .quick-action-btn {
+      background: #2a3545;
+      color: #eef2ff;
+    }
+    .quick-action-btn:hover {
+      background: #2ba0c4;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">🏥 MediLink</div>
+    <div class="menu-icon" id="menuIcon">☰</div>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="doctors.html">Doctors</a>
+      <a href="#" id="logoutBtn">Logout</a>
+      <button id="darkModeToggle" class="btn-outline">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<div class="dashboard-container">
+  <div class="sidebar">
+    <a href="#" class="active" onclick="showSection('appointments')">📋 My Appointments</a>
+    <a href="#" onclick="showSection('profile')">👤 My Profile</a>
+    <a href="#" onclick="showSection('myDoctors')">👨‍⚕️ My Doctor Profiles</a>
+  </div>
+  
+  <div class="main-content">
+    <!-- Quick Actions Bar -->
+    <div class="quick-actions">
+      <a href="add-doctor.html" class="quick-action-btn">
+        ➕ Add New Doctor Profile
+      </a>
+      <a href="doctors.html" class="quick-action-btn">
+        🔍 Find Doctors
+      </a>
+    </div>
+
+    <!-- Appointments Section -->
+    <div id="appointmentsSection">
+      <div class="dashboard-header">
+        <h2>📋 My Appointments</h2>
+      </div>
+      <div id="appointmentsList" class="glass-card" style="padding:1.5rem;">Loading...</div>
+    </div>
+    
+    <!-- Profile Section -->
+    <div id="profileSection" style="display:none;">
+      <div class="dashboard-header">
+        <h2>👤 My Profile</h2>
+      </div>
+      <div class="glass-card" style="padding:2rem;">
+        <p><strong>Name:</strong> <span id="userName"></span></p>
+        <p><strong>Email:</strong> <span id="userEmail"></span></p>
+        <p><strong>Member since:</strong> <span id="userSince"></span></p>
+        <button onclick="logout()" class="btn-danger" style="margin-top:1rem;">Logout</button>
+      </div>
+    </div>
+    
+    <!-- My Doctors Section (Submitted by this user) -->
+    <div id="myDoctorsSection" style="display:none;">
+      <div class="dashboard-header">
+        <h2>👨‍⚕️ My Doctor Profiles</h2>
+        <a href="add-doctor.html" class="add-doctor-btn">
+          ➕ Add New Doctor
+        </a>
+      </div>
+      <div id="myDoctorsList" class="glass-card" style="padding:1.5rem;">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentUser = null;
+  
+  async function checkAuthAndLoad() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if(!user) { 
+      window.location.href = 'login.html'; 
+      return; 
+    }
+    currentUser = user;
+    
+    document.getElementById('userName').innerText = user.user_metadata?.full_name || user.email;
+    document.getElementById('userEmail').innerText = user.email;
+    document.getElementById('userSince').innerText = new Date(user.created_at).toLocaleDateString();
+    
+    loadAppointments();
+    loadMyDoctors();
+  }
+  
+  async function loadAppointments() {
+    const { data, error } = await supabaseClient
+      .from('appointments')
+      .select('*, doctors(name, specialty, slug)')
+      .eq('user_id', currentUser.id)
+      .order('appointment_date', { ascending: true });
+    
+    const container = document.getElementById('appointmentsList');
+    if(error || !data || data.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2rem;">
+          <p>No appointments booked yet.</p>
+          <a href="doctors.html" class="btn-primary" style="margin-top:1rem; display:inline-block;">Find a Doctor →</a>
+        </div>`;
+      return;
+    }
+    
+    container.innerHTML = data.map(app => `
+      <div class="glass-card" style="margin-bottom:1rem; padding:1rem;">
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+          <div>
+            <h3>Dr. ${app.doctors?.name || 'Doctor'}</h3>
+            <p>${app.doctors?.specialty || 'General'}</p>
+            <p>📅 ${new Date(app.appointment_date).toLocaleString()}</p>
+          </div>
+          <div>
+            <span style="background:${app.status === 'confirmed' ? '#4caf50' : '#ff9800'}; color:white; padding:4px 12px; border-radius:20px;">
+              ${app.status === 'confirmed' ? '✅ Confirmed' : '⏳ Pending'}
+            </span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  async function loadMyDoctors() {
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .eq('email', currentUser.email)
+      .order('created_at', { ascending: false });
+    
+    const container = document.getElementById('myDoctorsList');
+    if(error || !data || data.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2rem;">
+          <p>You haven't added any doctor profiles yet.</p>
+          <a href="add-doctor.html" class="btn-primary" style="margin-top:1rem; display:inline-block;">➕ Add Your First Doctor Profile</a>
+        </div>`;
+      return;
+    }
+    
+    container.innerHTML = data.map(doc => `
+      <div class="glass-card" style="margin-bottom:1rem; padding:1rem;">
+        <div class="doctor-list-item">
+          <div>
+            <h3>${doc.name}</h3>
+            <p>${doc.specialty} • ${doc.city}</p>
+            <p>💰 ₹${doc.fees} per visit • 📅 ${doc.experience}+ years experience</p>
+            <p>🏥 ${doc.hospital || 'Private Practice'}</p>
+            <p>📞 ${doc.phone || 'Not provided'}</p>
+          </div>
+          <div style="text-align:right;">
+            <span class="${doc.approved ? 'approved-badge' : 'pending-badge'}">
+              ${doc.approved ? '✅ Approved' : '⏳ Pending Approval'}
+            </span>
+            <p style="margin-top:8px;">
+              <small>Submitted: ${new Date(doc.created_at).toLocaleDateString()}</small>
+            </p>
+            ${!doc.approved ? '<p style="color:#ff9800; margin-top:8px;">⚠️ Waiting for admin approval</p>' : 
+              `<a href="doctor-details.html?dr=${doc.slug}" class="btn-outline" style="display:inline-block; margin-top:8px; padding:6px 12px; font-size:12px;">View Profile →</a>`}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  window.showSection = (section) => {
+    document.getElementById('appointmentsSection').style.display = section === 'appointments' ? 'block' : 'none';
+    document.getElementById('profileSection').style.display = section === 'profile' ? 'block' : 'none';
+    document.getElementById('myDoctorsSection').style.display = section === 'myDoctors' ? 'block' : 'none';
+  };
+  
+  window.logout = async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'index.html';
+  };
+  
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  document.getElementById('menuIcon')?.addEventListener('click', () => document.getElementById('navLinks').classList.toggle('active'));
+  document.getElementById('logoutBtn')?.addEventListener('click', logout);
+  
+  checkAuthAndLoad();
+</script>
+</body>
+</html>

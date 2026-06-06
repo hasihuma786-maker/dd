@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediLink | Find Trusted Doctors Near You</title>
+  <meta name="description" content="Book appointments with top verified doctors. Search by specialty, city, or name. Instant booking.">
+  <meta name="keywords" content="doctor, healthcare, appointment, medical, clinic">
+  <meta property="og:title" content="MediLink - Find Trusted Doctors">
+  <meta property="og:description" content="Connect with top verified doctors in your city">
+  <link rel="canonical" href="https://yourdomain.com/">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">🏥 MediLink</div>
+    <div class="menu-icon" id="menuIcon">☰</div>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="doctors.html">Doctors</a>
+      <a href="#specialties">Specialties</a>
+      <a href="#cities">Cities</a>
+      <a href="login.html" id="loginNavBtn" class="btn-outline">Login</a>
+      <a href="dashboard.html" id="dashboardNavBtn" style="display:none;">Dashboard</a>
+      <button id="darkModeToggle" class="btn-outline" style="padding:6px 16px">🌙</button>
+      <a href="#" id="logoutBtn" style="display:none;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <!-- HERO SECTION -->
+  <section style="padding: 4rem 1rem; text-align: center; animation: fadeInUp 0.7s;">
+    <div class="container">
+      <h1>Find Trusted Doctors<br>Near You</h1>
+      <p style="font-size: 1.2rem; margin: 1.5rem 0;">Expert care, verified reviews, and instant appointments</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
+        <input type="text" id="searchDoctorInput" placeholder="🔍 Search by doctor name" style="padding: 12px 20px; border-radius: 60px; border: 1px solid #ccc; width: 240px;">
+        <input type="text" id="searchCityInput" placeholder="🏙️ City" style="padding: 12px 20px; border-radius: 60px; width: 180px;">
+        <select id="specialtySelect" style="padding: 12px 20px; border-radius: 60px;">
+          <option value="">All Specialties</option>
+          <option>Cardiologist</option><option>Dentist</option><option>Neurologist</option>
+          <option>Orthopedic</option><option>Gynecologist</option><option>Pediatrician</option>
+        </select>
+        <button class="btn-primary" id="heroSearchBtn">Search →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPECIALTY SECTION -->
+  <section id="specialties" class="container" style="margin: 4rem auto;">
+    <h2>Medical Specialties</h2>
+    <div class="specialty-grid grid-4" id="specialtyGrid"></div>
+  </section>
+
+  <!-- POPULAR CITIES -->
+  <section id="cities" class="container" style="margin: 4rem auto;">
+    <h2>Popular Cities</h2>
+    <div class="grid-4" id="citiesGrid"></div>
+  </section>
+
+  <!-- FEATURED DOCTORS -->
+  <section class="container" style="margin: 4rem auto;">
+    <h2>⭐ Featured Doctors</h2>
+    <div class="doctor-grid grid-4" id="featuredDoctorsContainer">
+      <div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="container" style="margin: 4rem auto;">
+    <h2>Patient Stories</h2>
+    <div id="testimonialSlider" class="glass-card" style="padding: 2rem; text-align: center; max-width: 600px; margin: 0 auto;"></div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="container" style="margin: 4rem auto;">
+    <h2>Frequently Asked Questions</h2>
+    <div class="glass-card" style="padding: 2rem;">
+      <div class="faq-item" style="margin-bottom: 1.5rem;">
+        <strong style="font-size: 1.1rem; cursor: pointer;" onclick="toggleFaq(this)">📅 How to book an appointment?</strong>
+        <p style="display: none; margin-top: 0.5rem;">Search for a doctor, click "Book Appointment", choose your preferred time, and confirm.</p>
+      </div>
+      <div class="faq-item" style="margin-bottom: 1.5rem;">
+        <strong style="font-size: 1.1rem; cursor: pointer;" onclick="toggleFaq(this)">✅ Are doctors verified?</strong>
+        <p style="display: none; margin-top: 0.5rem;">Yes! Every doctor undergoes strict credential verification.</p>
+      </div>
+      <div class="faq-item" style="margin-bottom: 1.5rem;">
+        <strong style="font-size: 1.1rem; cursor: pointer;" onclick="toggleFaq(this)">💳 What payment methods are accepted?</strong>
+        <p style="display: none; margin-top: 0.5rem;">UPI, Credit/Debit cards, Net Banking, Cash, and most health insurances.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2rem;">
+      <div><h4>MediLink</h4><p>Making healthcare accessible</p><p>📞 Emergency: 108</p></div>
+      <div><h4>Quick Links</h4><p><a href="#" style="color:white;">About Us</a></p><p><a href="#" style="color:white;">Privacy Policy</a></p><p><a href="#" style="color:white;">Contact</a></p></div>
+      <div><h4>Follow Us</h4><div style="display: flex; gap: 1rem; font-size: 1.5rem;">📘 🐦 📸 💼</div></div>
+    </div>
+    <hr style="margin: 2rem 0; border-color: rgba(255,255,255,0.2);">
+    <p style="text-align: center;">© 2026 MediLink — Healthcare at your fingertips</p>
+  </div>
+</footer>
+
+<div class="whatsapp-float" onclick="window.open('https://wa.me/919876543210', '_blank')">💬</div>
+
+<script>
+  // Mobile menu
+  const menuIcon = document.getElementById('menuIcon');
+  const navLinks = document.getElementById('navLinks');
+  if(menuIcon) menuIcon.addEventListener('click', () => navLinks.classList.toggle('active'));
+  
+  // Dark mode
+  const darkToggle = document.getElementById('darkModeToggle');
+  darkToggle?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  
+  window.toggleFaq = (element) => {
+    const answer = element.nextElementSibling;
+    answer.style.display = answer.style.display === 'none' ? 'block' : 'none';
+  };
+  
+  // Render Specialties
+  const specialties = [
+    { name: 'Dentist', icon: '🦷', en: 'Dentist' },
+    { name: 'Cardiologist', icon: '❤️', en: 'Cardiologist' },
+    { name: 'Neurologist', icon: '🧠', en: 'Neurologist' },
+    { name: 'Orthopedic', icon: '🦴', en: 'Orthopedic' },
+    { name: 'Gynecologist', icon: '👩‍⚕️', en: 'Gynecologist' },
+    { name: 'Pediatrician', icon: '👶', en: 'Pediatrician' }
+  ];
+  const specialtyGrid = document.getElementById('specialtyGrid');
+  if(specialtyGrid) {
+    specialtyGrid.innerHTML = specialties.map(s => `
+      <div class="specialty-card glass-card" style="padding: 2rem; text-align: center; cursor: pointer;" onclick="searchBySpecialty('${s.en}')">
+        <div style="font-size: 3rem;">${s.icon}</div>
+        <h3 style="margin-top: 1rem;">${s.name}</h3>
+      </div>
+    `).join('');
+  }
+  
+  // Render Cities
+  const cities = ['Kolkata', 'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Hyderabad'];
+  const citiesGrid = document.getElementById('citiesGrid');
+  if(citiesGrid) {
+    citiesGrid.innerHTML = cities.map(city => `
+      <div class="glass-card" style="padding: 1.5rem; text-align: center; cursor: pointer;" onclick="searchByCity('${city}')">
+        <div style="font-size: 2rem;">🏙️</div>
+        <h3>${city}</h3>
+        <p>200+ doctors</p>
+      </div>
+    `).join('');
+  }
+  
+  window.searchBySpecialty = (specialty) => {
+    window.location.href = `doctors.html?specialty=${encodeURIComponent(specialty)}`;
+  };
+  
+  window.searchByCity = (city) => {
+    window.location.href = `doctors.html?city=${encodeURIComponent(city)}`;
+  };
+  
+  // Load Featured Doctors
+  async function loadFeaturedDoctors() {
+    const container = document.getElementById('featuredDoctorsContainer');
+    if(!container) return;
+    container.innerHTML = Array(4).fill().map(() => '<div class="skeleton-card"></div>').join('');
+    
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .eq('approved', true)
+      .limit(4);
+      
+    if(error || !data || data.length === 0) {
+      container.innerHTML = '<p class="glass-card" style="padding:2rem; text-align:center;">No doctors found</p>';
+      return;
+    }
+    
+    container.innerHTML = data.map(doc => `
+      <div class="doctor-card glass-card" style="padding: 1.5rem;">
+        <img src="${doc.image || 'https://via.placeholder.com/300x200?text=Doctor'}" alt="${doc.name}" loading="lazy" style="width:100%; height:180px; object-fit:cover; border-radius:20px;">
+        <h3 style="margin-top: 1rem;">${doc.name}</h3>
+        <p style="color: #2ba0c4;">${doc.specialty} • ${doc.experience}+ yrs</p>
+        <p>⭐ ${doc.rating || 4.5} • ₹${doc.fees}</p>
+        <p>🏥 ${doc.hospital || 'Private Practice'}</p>
+        <a href="doctor-details.html?id=${doc.id}" class="btn-primary" style="display: inline-block; margin-top: 12px; text-decoration: none;">View Profile →</a>
+      </div>
+    `).join('');
+  }
+  
+  // Testimonials
+  const testimonials = [
+    { name: "Priya Sharma", text: "Found an excellent pediatrician for my son. The booking process was seamless!", img: "👩", city: "Mumbai" },
+    { name: "Rahul Verma", text: "Verified doctors, transparent pricing. Highly recommend MediLink!", img: "👨", city: "Delhi" }
+  ];
+  let testimonialIndex = 0;
+  function updateTestimonial() {
+    const t = testimonials[testimonialIndex];
+    const slider = document.getElementById('testimonialSlider');
+    if(slider) {
+      slider.innerHTML = `
+        <div style="font-size: 3rem;">${t.img}</div>
+        <p style="font-size: 1.1rem; margin: 1rem 0;">"${t.text}"</p>
+        <strong>${t.name}</strong>
+        <p style="opacity: 0.7;">⭐ 5.0 • ${t.city}</p>
+        <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem;">
+          <button onclick="prevTestimonial()" class="btn-outline">← Previous</button>
+          <button onclick="nextTestimonial()" class="btn-outline">Next →</button>
+        </div>
+      `;
+    }
+  }
+  window.prevTestimonial = () => {
+    testimonialIndex = (testimonialIndex - 1 + testimonials.length) % testimonials.length;
+    updateTestimonial();
+  };
+  window.nextTestimonial = () => {
+    testimonialIndex = (testimonialIndex + 1) % testimonials.length;
+    updateTestimonial();
+  };
+  updateTestimonial();
+  
+  // Hero Search
+  document.getElementById('heroSearchBtn')?.addEventListener('click', () => {
+    const name = document.getElementById('searchDoctorInput').value;
+    const city = document.getElementById('searchCityInput').value;
+    const specialty = document.getElementById('specialtySelect').value;
+    let url = 'doctors.html?';
+    if(name) url += `name=${encodeURIComponent(name)}&`;
+    if(city) url += `city=${encodeURIComponent(city)}&`;
+    if(specialty) url += `specialty=${encodeURIComponent(specialty)}`;
+    window.location.href = url;
+  });
+  
+  // Auth Check
+  async function checkAuth() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const loginBtn = document.getElementById('loginNavBtn');
+    const dashboardBtn = document.getElementById('dashboardNavBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    if(user) {
+      if(loginBtn) loginBtn.style.display = 'none';
+      if(dashboardBtn) dashboardBtn.style.display = 'inline-block';
+      if(logoutBtn) logoutBtn.style.display = 'inline-block';
+    } else {
+      if(loginBtn) loginBtn.style.display = 'inline-block';
+      if(dashboardBtn) dashboardBtn.style.display = 'none';
+      if(logoutBtn) logoutBtn.style.display = 'none';
+    }
+  }
+  checkAuth();
+  
+  document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await supabaseClient.auth.signOut();
+    window.location.reload();
+  });
+  
+  loadFeaturedDoctors();
+</script>
+</body>
+</html>

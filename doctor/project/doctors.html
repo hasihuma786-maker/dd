@@ -1,0 +1,34 @@
+// doctors.html এ renderDoctors ফাংশন আপডেট করুন
+function renderDoctors(doctors) {
+    if(!doctors || doctors.length === 0) {
+        doctorsContainer.innerHTML = '<div class="glass-card" style="padding:2rem; text-align:center;">🔍 No doctors match your search.</div>';
+        return;
+    }
+    
+    doctorsContainer.innerHTML = doctors.map(doctor => {
+        // slug যদি NULL হয়, তাহলে নাম থেকে তৈরি করুন
+        let doctorSlug = doctor.slug;
+        if (!doctorSlug) {
+            doctorSlug = doctor.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        }
+        
+        return `
+            <div class="doctor-card glass-card" style="padding: 1.5rem;">
+                <img src="${doctor.image || 'https://randomuser.me/api/portraits/med.jpg'}" 
+                     alt="${doctor.name}" 
+                     loading="lazy" 
+                     style="width:100%; height:180px; object-fit:cover; border-radius:20px;">
+                <h3 style="margin-top:1rem;">${doctor.name}</h3>
+                <p style="color:#2ba0c4;">${doctor.specialty}</p>
+                <p>⭐ ${doctor.rating || 4.5} • ${doctor.experience || 0}+ years</p>
+                <p>🏥 ${doctor.hospital || 'Private Practice'}</p>
+                <p><strong>₹${doctor.fees || 500}</strong> per visit</p>
+                <a href="doctor-details.html?dr=${doctorSlug}" 
+                   class="btn-primary" 
+                   style="display:inline-block; margin-top:12px; text-decoration:none;">
+                    View Profile →
+                </a>
+            </div>
+        `;
+    }).join('');
+}

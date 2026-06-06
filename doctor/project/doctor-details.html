@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Profile | MediLink</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">🏥 MediLink</div>
+    <div class="menu-icon" id="menuIcon">☰</div>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="doctors.html">Doctors</a>
+      <a href="login.html" id="loginNavBtn" class="btn-outline">Login</a>
+      <a href="dashboard.html" id="dashboardNavBtn" style="display:none;">Dashboard</a>
+      <button id="darkModeToggle" class="btn-outline">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container" style="padding: 2rem 1rem;" id="doctorProfileContainer"><div class="skeleton-card" style="height: 400px;"></div></main>
+
+<div id="appointmentModal" class="modal"><div class="modal-content"><h2>Book Appointment</h2><form id="appointmentForm"><div class="form-group"><label>Patient Name *</label><input type="text" id="patientName" required></div><div class="form-group"><label>Phone Number *</label><input type="tel" id="patientPhone" required></div><div class="form-group"><label>Preferred Date *</label><input type="date" id="appointmentDate" required></div><div class="form-group"><label>Preferred Time *</label><select id="appointmentTime"><option>10:00 AM</option><option>11:00 AM</option><option>12:00 PM</option><option>02:00 PM</option><option>03:00 PM</option><option>04:00 PM</option></select></div><div class="form-group"><label>Symptoms (Optional)</label><textarea id="symptoms" rows="3"></textarea></div><button type="submit" class="btn-primary">Confirm Booking</button><button type="button" onclick="closeModal()" class="btn-outline">Cancel</button></form></div></div>
+
+<script>
+  let currentDoctor = null;
+  
+  async function loadDoctorDetails() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const doctorId = urlParams.get('id');
+    if(!doctorId) { document.getElementById('doctorProfileContainer').innerHTML = '<div class="glass-card" style="padding:2rem;">Doctor ID missing</div>'; return; }
+    
+    const { data, error } = await supabaseClient.from('doctors').select('*').eq('id', parseInt(doctorId)).single();
+    if(error || !data) { document.getElementById('doctorProfileContainer').innerHTML = '<div class="glass-card" style="padding:2rem;">Doctor not found</div>'; return; }
+    
+    currentDoctor = data;
+    renderDoctorProfile(data);
+    loadReviews(doctorId);
+  }
+  
+  function renderDoctorProfile(doc) {
+    const container = document.getElementById('doctorProfileContainer');
+    container.innerHTML = `
+      <div class="glass-card" style="padding: 2rem;">
+        <div style="display: flex; flex-wrap: wrap; gap: 2rem;">
+          <img src="${doc.image || 'https://via.placeholder.com/300x300?text=Doctor'}" alt="${doc.name}" style="width: 250px; height: 250px; object-fit: cover; border-radius: 30px;">
+          <div style="flex: 1;"><h1>${doc.name}</h1><p style="font-size: 1.2rem; color: #2ba0c4;">${doc.specialty}</p><p>⭐ ${doc.rating || 4.5} (120+ reviews)</p><p>📅 ${doc.experience || 0}+ years experience</p><p>🏥 ${doc.hospital || 'Private Practice'}</p><p>📍 ${doc.city || 'Multiple Locations'}</p><p>💰 <strong>₹${doc.fees}</strong> per consultation</p><p>${doc.available ? '✅ Available for appointments' : '⏰ Currently unavailable'}</p><button onclick="openBookingModal()" class="btn-primary" style="margin-top: 1rem;">📅 Book Appointment →</button></div>
+        </div>
+        <div style="margin-top: 2rem;"><h3>About Doctor</h3><p>${doc.about || 'Experienced specialist dedicated to providing quality healthcare.'}</p></div>
+        <div style="margin-top: 2rem;"><h3>Qualifications</h3><ul><li>MBBS - Top Medical College</li><li>MD - ${doc.specialty}</li><li>Fellowship in Advanced Care</li></ul></div>
+        <div style="margin-top: 2rem;"><h3>Consultation Timings</h3><p>Mon-Sat: 10 AM - 6 PM | Sunday: Closed</p></div>
+        <div style="margin-top: 2rem;" id="reviewsSection"><h3>Patient Reviews</h3><div id="reviewsList">Loading reviews...</div><div style="margin-top: 1rem;"><textarea id="reviewText" placeholder="Write a review..." rows="3" style="width:100%; border-radius:16px; padding:12px;"></textarea><select id="reviewRating" style="margin-top:8px; padding:8px;"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select><button onclick="submitReview()" class="btn-primary" style="margin-top:8px;">Submit Review</button></div></div>
+      </div>
+    `;
+  }
+  
+  async function loadReviews(doctorId) {
+    const { data, error } = await supabaseClient.from('reviews').select('*').eq('doctor_id', parseInt(doctorId)).order('created_at', { ascending: false });
+    const reviewsDiv = document.getElementById('reviewsList');
+    if(error || !data || data.length === 0) { reviewsDiv.innerHTML = '<p>No reviews yet. Be the first to review!</p>'; return; }
+    reviewsDiv.innerHTML = data.map(review => `<div class="glass-card" style="padding: 1rem; margin-bottom: 1rem;"><strong>${review.user_name}</strong> ⭐ ${review.rating}<p>${review.comment}</p><small>${new Date(review.created_at).toLocaleDateString()}</small></div>`).join('');
+  }
+  
+  window.submitReview = async () => {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if(!user) { alert('Please login to submit a review'); window.location.href = 'login.html'; return; }
+    const reviewText = document.getElementById('reviewText').value;
+    const rating = document.getElementById('reviewRating').value;
+    if(!reviewText) { alert('Please write a review'); return; }
+    const { error } = await supabaseClient.from('reviews').insert({ doctor_id: currentDoctor.id, user_id: user.id, user_name: user.email.split('@')[0], rating: parseInt(rating), comment: reviewText, created_at: new Date() });
+    if(error) alert('Error submitting review');
+    else { alert('Review submitted!'); document.getElementById('reviewText').value = ''; loadReviews(currentDoctor.id); }
+  };
+  
+  window.openBookingModal = async () => {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if(!user) { alert('Please login to book appointment'); window.location.href = 'login.html'; return; }
+    document.getElementById('appointmentModal').classList.add('active');
+  };
+  
+  window.closeModal = () => { document.getElementById('appointmentModal').classList.remove('active'); };
+  
+  document.getElementById('appointmentForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if(!user) { alert('Please login'); return; }
+    const appointment = { doctor_id: currentDoctor.id, user_id: user.id, patient_name: document.getElementById('patientName').value, patient_phone: document.getElementById('patientPhone').value, appointment_date: document.getElementById('appointmentDate').value + ' ' + document.getElementById('appointmentTime').value, symptoms: document.getElementById('symptoms').value, status: 'pending', created_at: new Date() };
+    const { error } = await supabaseClient.from('appointments').insert(appointment);
+    if(error) alert('Booking failed: ' + error.message);
+    else { alert('Appointment booked! We will confirm via SMS.'); closeModal(); document.getElementById('appointmentForm').reset(); }
+  });
+  
+  async function checkAuth() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const loginBtn = document.getElementById('loginNavBtn');
+    const dashboardBtn = document.getElementById('dashboardNavBtn');
+    if(user) { if(loginBtn) loginBtn.style.display = 'none'; if(dashboardBtn) dashboardBtn.style.display = 'inline-block'; }
+    else { if(loginBtn) loginBtn.style.display = 'inline-block'; if(dashboardBtn) dashboardBtn.style.display = 'none'; }
+  }
+  
+  document.getElementById('menuIcon')?.addEventListener('click', () => document.getElementById('navLinks').classList.toggle('active'));
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  
+  checkAuth(); loadDoctorDetails();
+</script>
+</body>
+</html>
