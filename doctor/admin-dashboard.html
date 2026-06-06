@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>অ্যাডমিন ড্যাশবোর্ড | মেডিলিংক</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">👑 মেডিলিংক অ্যাডমিন</div>
+    <div class="nav-links">
+      <a href="index.html">হোম</a>
+      <button id="logoutBtn" class="btn-outline">লগআউট</button>
+      <button id="darkModeToggle" class="btn-outline">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container" style="padding: 2rem 1rem;">
+  <h1>👋 অ্যাডমিন ড্যাশবোর্ড</h1>
+  <p id="adminName" style="margin-bottom: 2rem;">স্বাগতম!</p>
+  
+  <!-- Stats Cards -->
+  <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="stat-card glass-card" style="padding: 1.5rem; text-align: center;">
+      <div class="stat-number" id="totalDoctors" style="font-size: 2rem; font-weight: bold;">0</div>
+      <div>মোট ডাক্তার</div>
+    </div>
+    <div class="stat-card glass-card" style="padding: 1.5rem; text-align: center;">
+      <div class="stat-number" id="pendingDoctors" style="font-size: 2rem; font-weight: bold;">0</div>
+      <div>অনুমোদনের অপেক্ষায়</div>
+    </div>
+    <div class="stat-card glass-card" style="padding: 1.5rem; text-align: center;">
+      <div class="stat-number" id="totalAppointments" style="font-size: 2rem; font-weight: bold;">0</div>
+      <div>মোট অ্যাপয়েন্টমেন্ট</div>
+    </div>
+  </div>
+  
+  <!-- Pending Doctors -->
+  <div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem;">
+    <h2>⏳ অনুমোদনের অপেক্ষায় ডাক্তার</h2>
+    <div id="pendingDoctorsList">লোড হচ্ছে...</div>
+  </div>
+  
+  <!-- All Doctors -->
+  <div class="glass-card" style="padding: 1.5rem;">
+    <h2>👨‍⚕️ সকল ডাক্তার</h2>
+    <input type="text" id="searchDoctors" placeholder="ডাক্তার খুঁজুন..." style="width: 100%; padding: 10px; margin-bottom: 1rem; border-radius: 40px;">
+    <div id="allDoctorsList">লোড হচ্ছে...</div>
+  </div>
+</div>
+
+<script>
+  let currentAdmin = null;
+  
+  // চেক করুন ইউজার অ্যাডমিন কিনা এবং লগইন করা আছে কিনা
+  async function checkAdminAndLoad() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    
+    if(!user) {
+      window.location.href = 'admin-login.html';
+      return;
+    }
+    
+    // চেক করুন admins টেবিলে আছে কিনা
+    const { data: adminData, error } = await supabaseClient
+      .from('admins')
+      .select('name, role')
+      .eq('email', user.email)
+      .single();
+    
+    if(error || !adminData) {
+      alert('আপনি অ্যাডমিন নন!');
+      await supabaseClient.auth.signOut();
+      window.location.href = 'admin-login.html';
+      return;
+    }
+    
+    currentAdmin = adminData;
+    document.getElementById('adminName').innerText = `স্বাগতম, ${adminData.name || user.email}!`;
+    
+    // সব ডাটা লোড করুন
+    loadStats();
+    loadPendingDoctors();
+    loadAllDoctors();
+  }
+  
+  async function loadStats() {
+    const { count: totalDocs } = await supabaseClient.from('doctors').select('*', { count: 'exact', head: true });
+    const { count: pendingDocs } = await supabaseClient.from('doctors').select('*', { count: 'exact', head: true }).eq('approved', false);
+    const { count: totalApps } = await supabaseClient.from('appointments').select('*', { count: 'exact', head: true });
+    
+    document.getElementById('totalDoctors').innerText = totalDocs || 0;
+    document.getElementById('pendingDoctors').innerText = pendingDocs || 0;
+    document.getElementById('totalAppointments').innerText = totalApps || 0;
+  }
+  
+  async function loadPendingDoctors() {
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .eq('approved', false)
+      .order('created_at', { ascending: false });
+    
+    const container = document.getElementById('pendingDoctorsList');
+    if(error || !data || data.length === 0) {
+      container.innerHTML = '<p>✅ কোনো pending ডাক্তার নেই</p>';
+      return;
+    }
+    
+    container.innerHTML = data.map(doc => `
+      <div class="glass-card" style="margin-bottom: 1rem; padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+          <div>
+            <h3>${doc.name}</h3>
+            <p>${doc.specialty} • ${doc.city} • ${doc.experience}+ বছর</p>
+            <p>ফি: ₹${doc.fees}</p>
+          </div>
+          <div>
+            <button onclick="approveDoctor(${doc.id})" class="btn-success" style="background: green; color: white; padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer;">✅ অনুমোদন</button>
+            <button onclick="rejectDoctor(${doc.id})" class="btn-danger" style="background: red; color: white; padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer;">❌ বাতিল</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  window.approveDoctor = async (id) => {
+    const { error } = await supabaseClient
+      .from('doctors')
+      .update({ approved: true })
+      .eq('id', id);
+    
+    if(error) alert('এরর: ' + error.message);
+    else {
+      alert('✅ ডাক্তার অনুমোদিত হয়েছে!');
+      loadStats();
+      loadPendingDoctors();
+      loadAllDoctors();
+    }
+  };
+  
+  window.rejectDoctor = async (id) => {
+    if(confirm('এই ডাক্তার ডিলিট করতে চান?')) {
+      const { error } = await supabaseClient.from('doctors').delete().eq('id', id);
+      if(error) alert('এরর: ' + error.message);
+      else {
+        alert('ডাক্তার ডিলিট করা হয়েছে');
+        loadStats();
+        loadPendingDoctors();
+        loadAllDoctors();
+      }
+    }
+  };
+  
+  async function loadAllDoctors() {
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    const container = document.getElementById('allDoctorsList');
+    if(error || !data || data.length === 0) {
+      container.innerHTML = '<p>কোন ডাক্তার নেই</p>';
+      return;
+    }
+    
+    container.innerHTML = `
+      <table style="width:100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background: #f5f5f5;">
+            <th style="padding: 12px; text-align: left;">নাম</th>
+            <th style="padding: 12px; text-align: left;">বিশেষত্ব</th>
+            <th style="padding: 12px; text-align: left;">শহর</th>
+            <th style="padding: 12px; text-align: left;">স্ট্যাটাস</th>
+            <th style="padding: 12px; text-align: left;">অ্যাকশন</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map(doc => `
+            <tr style="border-bottom: 1px solid #ddd;">
+              <td style="padding: 12px;">${doc.name}</td>
+              <td style="padding: 12px;">${doc.specialty}</td>
+              <td style="padding: 12px;">${doc.city}</td>
+              <td style="padding: 12px;">${doc.approved ? '✅ অনুমোদিত' : '⏳ পেন্ডিং'}</td>
+              <td style="padding: 12px;">
+                <button onclick="deleteDoctor(${doc.id})" style="background: #c62828; color: white; padding: 4px 12px; border: none; border-radius: 12px; cursor: pointer;">ডিলিট</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  
+  window.deleteDoctor = async (id) => {
+    if(confirm('স্থায়ীভাবে ডিলিট করতে চান?')) {
+      const { error } = await supabaseClient.from('doctors').delete().eq('id', id);
+      if(error) alert('এরর: ' + error.message);
+      else {
+        alert('ডাক্তার ডিলিট হয়েছে');
+        loadStats();
+        loadAllDoctors();
+      }
+    }
+  };
+  
+  // Search doctors
+  document.getElementById('searchDoctors')?.addEventListener('input', async (e) => {
+    const term = e.target.value.toLowerCase();
+    const { data } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .ilike('name', `%${term}%`);
+    
+    const container = document.getElementById('allDoctorsList');
+    if(!data || data.length === 0) {
+      container.innerHTML = '<p>কোন ডাক্তার খুঁজে পাওয়া যায়নি</p>';
+      return;
+    }
+    
+    container.innerHTML = data.map(doc => `
+      <div style="border-bottom: 1px solid #ddd; padding: 12px; display: flex; justify-content: space-between;">
+        <div><strong>${doc.name}</strong><br>${doc.specialty} • ${doc.city}</div>
+        <div><button onclick="deleteDoctor(${doc.id})" style="background: red; color: white; padding: 4px 12px; border: none; border-radius: 12px;">ডিলিট</button></div>
+      </div>
+    `).join('');
+  });
+  
+  // Logout
+  document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'admin-login.html';
+  });
+  
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  
+  checkAdminAndLoad();
+</script>
+</body>
+</html>

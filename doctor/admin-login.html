@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>অ্যাডমিন লগইন | মেডিলিংক</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+
+<div class="container" style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+  <div class="glass-card" style="max-width: 450px; width: 90%; padding: 2.5rem;">
+    <h2 style="text-align: center;">🔐 অ্যাডমিন লগইন</h2>
+    <p style="text-align: center; margin-bottom: 1.5rem;">আপনার অ্যাডমিন অ্যাকাউন্টে লগইন করুন</p>
+    
+    <form id="adminLoginForm">
+      <div class="form-group">
+        <label>ইমেইল</label>
+        <input type="email" id="email" required placeholder="admin@example.com">
+      </div>
+      
+      <div class="form-group">
+        <label>পাসওয়ার্ড</label>
+        <input type="password" id="password" required placeholder="পাসওয়ার্ড দিন">
+        <small style="cursor: pointer;" onclick="togglePassword()">👁️ দেখাও/লুকাও</small>
+      </div>
+      
+      <button type="submit" class="btn-primary" style="width:100%;">লগইন →</button>
+    </form>
+    
+    <div id="errorBox" style="display:none; margin-top: 1rem; padding: 0.75rem; background: #ffebee; color: #c62828; border-radius: 12px; text-align: center;"></div>
+    
+    <p style="text-align: center; margin-top: 1.5rem;">
+      নতুন অ্যাডমিন? <a href="admin-register.html">নিবন্ধন করুন</a><br>
+      <a href="index.html">← হোমপেজে ফিরুন</a>
+    </p>
+  </div>
+</div>
+
+<script>
+  function togglePassword() {
+    const pwd = document.getElementById('password');
+    pwd.type = pwd.type === 'password' ? 'text' : 'password';
+  }
+  
+  document.getElementById('adminLoginForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorBox = document.getElementById('errorBox');
+    
+    if(!email || !password) {
+      errorBox.style.display = 'block';
+      errorBox.innerText = 'ইমেইল এবং পাসওয়ার্ড দিন';
+      return;
+    }
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerText;
+    submitBtn.innerText = 'লগইন হচ্ছে...';
+    submitBtn.disabled = true;
+    errorBox.style.display = 'none';
+    
+    try {
+      // লগইন চেষ্টা
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+      
+      if(error) {
+        errorBox.style.display = 'block';
+        errorBox.innerText = '❌ লগইন ব্যর্থ: ' + error.message;
+        return;
+      }
+      
+      // চেক করুন এই ইউজার অ্যাডমিন কিনা
+      const { data: adminData, error: adminError } = await supabaseClient
+        .from('admins')
+        .select('role, name')
+        .eq('email', email)
+        .single();
+      
+      if(adminError || !adminData) {
+        errorBox.style.display = 'block';
+        errorBox.innerText = '❌ আপনি অ্যাডমিন নন। অনুগ্রহ করে অ্যাডমিন রেজিস্ট্রেশন করুন।';
+        await supabaseClient.auth.signOut();
+        return;
+      }
+      
+      // সবকিছু ঠিক আছে - ড্যাশবোর্ডে নিয়ে যান
+      errorBox.style.display = 'none';
+      errorBox.style.backgroundColor = '#e8f5e9';
+      errorBox.style.color = '#2e7d32';
+      errorBox.innerText = '✅ লগইন সফল! ড্যাশবোর্ডে নিয়ে যাচ্ছি...';
+      errorBox.style.display = 'block';
+      
+      setTimeout(() => {
+        window.location.href = 'admin-dashboard.html';
+      }, 1000);
+      
+    } catch(error) {
+      errorBox.style.display = 'block';
+      errorBox.innerText = 'ত্রুটি: ' + error.message;
+    } finally {
+      submitBtn.innerText = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

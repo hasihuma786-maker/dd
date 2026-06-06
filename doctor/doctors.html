@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ডাক্তার খুঁজুন | মেডিলিংক</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="supabase.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <div class="logo">🏥 মেডিলিংক</div>
+    <div class="menu-icon" id="menuIcon">☰</div>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">হোম</a>
+      <a href="doctors.html">ডাক্তার</a>
+      <a href="login.html" id="loginNavBtn" class="btn-outline">লগইন</a>
+      <a href="dashboard.html" id="dashboardNavBtn" style="display:none;">ড্যাশবোর্ড</a>
+      <button id="darkModeToggle" class="btn-outline">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container" style="padding: 2rem 1rem;">
+  <h1 style="margin-bottom: 2rem;">👨‍⚕️ ডাক্তার খুঁজুন</h1>
+  
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="filter-group">
+      <input type="text" id="searchInput" placeholder="🔍 ডাক্তারের নাম লিখুন" style="flex:2;">
+      <select id="cityFilter">
+        <option value="">সব শহর</option>
+        <option>Kolkata</option><option>Delhi</option><option>Mumbai</option>
+        <option>Bangalore</option><option>Chennai</option><option>Hyderabad</option>
+      </select>
+      <select id="specialtyFilter">
+        <option value="">সব বিশেষত্ব</option>
+        <option>Dentist</option><option>Cardiologist</option><option>Neurologist</option>
+        <option>Orthopedic</option><option>Gynecologist</option><option>Pediatrician</option>
+      </select>
+      <select id="experienceFilter">
+        <option value="">অভিজ্ঞতা</option>
+        <option value="0">যেকোনো</option>
+        <option value="5">৫+ বছর</option>
+        <option value="10">১০+ বছর</option>
+        <option value="15">১৫+ বছর</option>
+      </select>
+      <input type="number" id="maxFees" placeholder="সর্বোচ্চ ফি (₹)" style="width: 120px;">
+      <button id="resetFilters" class="btn-outline">রিসেট</button>
+    </div>
+  </div>
+  
+  <!-- Results -->
+  <div id="doctorsContainer" class="doctor-grid grid-4" style="min-height: 400px;">
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+  </div>
+  
+  <!-- Pagination -->
+  <div id="pagination" class="pagination"></div>
+</main>
+
+<footer style="margin-top: 4rem;">
+  <div class="container" style="text-align: center;">© 2026 মেডিলিংক — বিশ্বাসে অ্যাপয়েন্টমেন্ট</div>
+</footer>
+
+<script>
+  let currentPage = 1;
+  let totalPages = 1;
+  let allDoctors = [];
+  let filteredDoctors = [];
+  let searchTimeout;
+  
+  // UI Elements
+  const doctorsContainer = document.getElementById('doctorsContainer');
+  const searchInput = document.getElementById('searchInput');
+  const cityFilter = document.getElementById('cityFilter');
+  const specialtyFilter = document.getElementById('specialtyFilter');
+  const experienceFilter = document.getElementById('experienceFilter');
+  const maxFees = document.getElementById('maxFees');
+  
+  // Load doctors from Supabase
+  async function loadDoctors() {
+    doctorsContainer.innerHTML = Array(6).fill().map(() => '<div class="skeleton-card"></div>').join('');
+    
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select('*')
+      .eq('approved', true);
+      
+    if(error) {
+      doctorsContainer.innerHTML = '<p class="glass-card" style="padding:2rem;">ডাক্তার লোড করতে সমস্যা হয়েছে</p>';
+      return;
+    }
+    
+    allDoctors = data || [];
+    applyFilters();
+  }
+  
+  // Apply filters with debounce
+  function applyFilters() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const city = cityFilter.value;
+    const specialty = specialtyFilter.value;
+    const minExp = parseInt(experienceFilter.value) || 0;
+    const maxFeeValue = parseInt(maxFees.value) || Infinity;
+    
+    filteredDoctors = allDoctors.filter(doc => {
+      if(searchTerm && !doc.name.toLowerCase().includes(searchTerm)) return false;
+      if(city && doc.city !== city) return false;
+      if(specialty && doc.specialty !== specialty) return false;
+      if(minExp && (doc.experience || 0) < minExp) return false;
+      if(maxFeeValue !== Infinity && doc.fees > maxFeeValue) return false;
+      return true;
+    });
+    
+    totalPages = Math.ceil(filteredDoctors.length / 12);
+    currentPage = 1;
+    renderDoctors();
+  }
+  
+  function renderDoctors() {
+    const start = (currentPage - 1) * 12;
+    const pageDoctors = filteredDoctors.slice(start, start + 12);
+    
+    if(pageDoctors.length === 0) {
+      doctorsContainer.innerHTML = '<div class="glass-card" style="padding:3rem; text-align:center; grid-column:1/-1;">কোন ডাক্তার পাওয়া যায়নি 🏥</div>';
+    } else {
+      doctorsContainer.innerHTML = pageDoctors.map(doc => `
+        <div class="doctor-card glass-card" style="padding: 1.5rem;">
+          <img src="${doc.image || 'https://via.placeholder.com/300x200?text=Doctor'}" alt="${doc.name}" loading="lazy" style="width:100%; height:160px; object-fit:cover; border-radius:20px;">
+          <h3 style="margin-top:1rem;">${doc.name}</h3>
+          <p style="color:#2ba0c4;">${doc.specialty}</p>
+          <p>⭐ ${doc.rating || 4.5} • ${doc.experience || 0}+ বছর</p>
+          <p>🏥 ${doc.hospital || 'প্রাইভেট ক্লিনিক'}</p>
+          <p><strong>₹${doc.fees}</strong> প্রতি ভিজিট</p>
+          <p>${doc.available ? '✅ আজকে সেবা দিচ্ছেন' : '⏰ সময় জানতে যোগাযোগ করুন'}</p>
+          <a href="doctor-details.html?id=${doc.id}" class="btn-primary" style="display:inline-block; margin-top:12px; text-decoration:none;">অ্যাপয়েন্টমেন্ট →</a>
+        </div>
+      `).join('');
+    }
+    
+    renderPagination();
+  }
+  
+  function renderPagination() {
+    const paginationDiv = document.getElementById('pagination');
+    if(totalPages <= 1) {
+      paginationDiv.innerHTML = '';
+      return;
+    }
+    
+    let buttons = '';
+    for(let i = 1; i <= Math.min(totalPages, 10); i++) {
+      buttons += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+    }
+    paginationDiv.innerHTML = `
+      <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>← আগে</button>
+      ${buttons}
+      <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>পরে →</button>
+    `;
+  }
+  
+  window.goToPage = (page) => {
+    if(page < 1 || page > totalPages) return;
+    currentPage = page;
+    renderDoctors();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  // Debounced search
+  function debouncedSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      applyFilters();
+    }, 500);
+  }
+  
+  // Event listeners
+  searchInput?.addEventListener('input', debouncedSearch);
+  cityFilter?.addEventListener('change', applyFilters);
+  specialtyFilter?.addEventListener('change', applyFilters);
+  experienceFilter?.addEventListener('change', applyFilters);
+  maxFees?.addEventListener('input', debouncedSearch);
+  document.getElementById('resetFilters')?.addEventListener('click', () => {
+    searchInput.value = '';
+    cityFilter.value = '';
+    specialtyFilter.value = '';
+    experienceFilter.value = '';
+    maxFees.value = '';
+    applyFilters();
+  });
+  
+  // Get URL params on load
+  function getUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('name')) searchInput.value = params.get('name');
+    if(params.get('city')) cityFilter.value = params.get('city');
+    if(params.get('specialty')) specialtyFilter.value = params.get('specialty');
+    applyFilters();
+  }
+  
+  // Auth check
+  async function checkAuth() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const loginBtn = document.getElementById('loginNavBtn');
+    const dashboardBtn = document.getElementById('dashboardNavBtn');
+    if(user) {
+      if(loginBtn) loginBtn.style.display = 'none';
+      if(dashboardBtn) dashboardBtn.style.display = 'inline-block';
+    } else {
+      if(loginBtn) loginBtn.style.display = 'inline-block';
+      if(dashboardBtn) dashboardBtn.style.display = 'none';
+    }
+  }
+  
+  // Mobile menu and dark mode
+  document.getElementById('menuIcon')?.addEventListener('click', () => document.getElementById('navLinks').classList.toggle('active'));
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => document.body.classList.toggle('dark'));
+  
+  loadDoctors();
+  checkAuth();
+  getUrlParams();
+</script>
+</body>
+</html>
